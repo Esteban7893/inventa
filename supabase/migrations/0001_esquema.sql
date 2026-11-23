@@ -1,6 +1,7 @@
 -- Inventa — esquema inicial: productos, clientes, pedidos y líneas de pedido.
 -- Cada fila pertenece a un usuario (owner_id) y RLS limita todo a sus propias filas.
 -- El stock solo se mueve dentro de las funciones crear_pedido y cancelar_pedido.
+-- pedidos y pedido_lineas solo se escriben a través de esas funciones (security definer).
 
 -- ---------------------------------------------------------------------------
 -- Tablas
@@ -85,11 +86,16 @@ create index pedido_lineas_producto_id_idx on public.pedido_lineas (producto_id,
 -- Permisos y RLS
 -- ---------------------------------------------------------------------------
 
+-- productos y clientes se leen y escriben directamente (con RLS).
+-- pedidos y pedido_lineas solo se leen: se escriben exclusivamente con las funciones
+-- crear_pedido, cancelar_pedido y enviar_pedido, para que nadie se salte el control
+-- de stock ni de estados con una escritura directa.
 revoke all on table public.productos, public.clientes, public.pedidos, public.pedido_lineas
-  from anon, public;
+  from public, anon, authenticated;
 grant select, insert, update, delete
-  on table public.productos, public.clientes, public.pedidos, public.pedido_lineas
+  on table public.productos, public.clientes
   to authenticated;
+grant select on table public.pedidos, public.pedido_lineas to authenticated;
 
 alter table public.productos enable row level security;
 alter table public.clientes enable row level security;
@@ -118,23 +124,9 @@ create policy "clientes_delete_propios" on public.clientes
 
 create policy "pedidos_select_propios" on public.pedidos
   for select to authenticated using (owner_id = (select auth.uid()));
-create policy "pedidos_insert_propios" on public.pedidos
-  for insert to authenticated with check (owner_id = (select auth.uid()));
-create policy "pedidos_update_propios" on public.pedidos
-  for update to authenticated
-  using (owner_id = (select auth.uid())) with check (owner_id = (select auth.uid()));
-create policy "pedidos_delete_propios" on public.pedidos
-  for delete to authenticated using (owner_id = (select auth.uid()));
 
 create policy "pedido_lineas_select_propias" on public.pedido_lineas
   for select to authenticated using (owner_id = (select auth.uid()));
-create policy "pedido_lineas_insert_propias" on public.pedido_lineas
-  for insert to authenticated with check (owner_id = (select auth.uid()));
-create policy "pedido_lineas_update_propias" on public.pedido_lineas
-  for update to authenticated
-  using (owner_id = (select auth.uid())) with check (owner_id = (select auth.uid()));
-create policy "pedido_lineas_delete_propias" on public.pedido_lineas
-  for delete to authenticated using (owner_id = (select auth.uid()));
 
 -- ---------------------------------------------------------------------------
 -- crear_pedido: valida, bloquea los productos, comprueba el stock de todas las
@@ -142,12 +134,15 @@ create policy "pedido_lineas_delete_propias" on public.pedido_lineas
 --
 -- p_lineas: [{ "producto_id": "<uuid>", "cantidad": <entero > 0> }, ...]
 -- Devuelve el id del pedido.
+--
+-- security definer: es la única vía para escribir pedidos. Por eso exige sesión y
+-- filtra cada lectura y escritura por owner_id = v_uid (nunca toca filas de otro).
 -- ---------------------------------------------------------------------------
 
 create or replace function public.crear_pedido(p_cliente_id uuid, p_lineas jsonb)
 returns uuid
 language plpgsql
-security invoker
+security definer
 set search_path = ''
 as $$
 declare
@@ -161,9 +156,16 @@ declare
   v_sin_stock text;
   v_total bigint;
   v_pedido_id uuid;
+  v_uid uuid := auth.uid();
 begin
+  if v_uid is null then
+    raise exception 'NO_AUTENTICADO';
+  end if;
+
   if p_cliente_id is null
-    or not exists (select 1 from public.clientes c where c.id = p_cliente_id) then
+    or not exists (
+      select 1 from public.clientes c where c.id = p_cliente_id and c.owner_id = v_uid
+    ) then
     raise exception 'CLIENTE_NO_ENCONTRADO';
   end if;
 
@@ -209,6 +211,7 @@ begin
     select p.id
     from public.productos p
     where p.id = any (v_producto_ids)
+      and p.owner_id = v_uid
     order by p.id
     for update
   loop
@@ -223,7 +226,7 @@ begin
   select p.nombre
   into v_sin_stock
   from unnest(v_producto_ids, v_cantidades) with ordinality as l (producto_id, cantidad, orden)
-  join public.productos p on p.id = l.producto_id
+  join public.productos p on p.id = l.producto_id and p.owner_id = v_uid
   where p.stock < l.cantidad
   order by l.orden
   limit 1;
@@ -235,25 +238,26 @@ begin
   select coalesce(sum(p.precio_cents::bigint * l.cantidad), 0)
   into v_total
   from unnest(v_producto_ids, v_cantidades) as l (producto_id, cantidad)
-  join public.productos p on p.id = l.producto_id;
+  join public.productos p on p.id = l.producto_id and p.owner_id = v_uid;
 
   if v_total > 2147483647 then
     raise exception 'TOTAL_DEMASIADO_ALTO';
   end if;
 
-  insert into public.pedidos (cliente_id, estado, total_cents)
-  values (p_cliente_id, 'pendiente', v_total::integer)
+  insert into public.pedidos (owner_id, cliente_id, estado, total_cents)
+  values (v_uid, p_cliente_id, 'pendiente', v_total::integer)
   returning id into v_pedido_id;
 
-  insert into public.pedido_lineas (pedido_id, producto_id, cantidad, precio_unit_cents)
-  select v_pedido_id, p.id, l.cantidad, p.precio_cents
+  insert into public.pedido_lineas (owner_id, pedido_id, producto_id, cantidad, precio_unit_cents)
+  select v_uid, v_pedido_id, p.id, l.cantidad, p.precio_cents
   from unnest(v_producto_ids, v_cantidades) as l (producto_id, cantidad)
-  join public.productos p on p.id = l.producto_id;
+  join public.productos p on p.id = l.producto_id and p.owner_id = v_uid;
 
   update public.productos p
   set stock = p.stock - l.cantidad
   from unnest(v_producto_ids, v_cantidades) as l (producto_id, cantidad)
-  where p.id = l.producto_id;
+  where p.id = l.producto_id
+    and p.owner_id = v_uid;
 
   return v_pedido_id;
 end;
@@ -262,22 +266,29 @@ $$;
 -- ---------------------------------------------------------------------------
 -- cancelar_pedido: solo desde 'pendiente'. Devuelve el stock de cada línea una
 -- sola vez (el pedido queda bloqueado y deja de estar pendiente).
+-- security definer: exige sesión y filtra todo por owner_id = v_uid.
 -- ---------------------------------------------------------------------------
 
 create or replace function public.cancelar_pedido(p_pedido_id uuid)
 returns void
 language plpgsql
-security invoker
+security definer
 set search_path = ''
 as $$
 declare
   v_estado text;
   v_producto record;
+  v_uid uuid := auth.uid();
 begin
+  if v_uid is null then
+    raise exception 'NO_AUTENTICADO';
+  end if;
+
   select pe.estado
   into v_estado
   from public.pedidos pe
   where pe.id = p_pedido_id
+    and pe.owner_id = v_uid
   for update;
 
   if not found then
@@ -292,9 +303,13 @@ begin
   for v_producto in
     select p.id
     from public.productos p
-    where p.id in (
-      select pl.producto_id from public.pedido_lineas pl where pl.pedido_id = p_pedido_id
-    )
+    where p.owner_id = v_uid
+      and p.id in (
+        select pl.producto_id
+        from public.pedido_lineas pl
+        where pl.pedido_id = p_pedido_id
+          and pl.owner_id = v_uid
+      )
     order by p.id
     for update
   loop
@@ -305,32 +320,42 @@ begin
   set stock = p.stock + pl.cantidad
   from public.pedido_lineas pl
   where pl.pedido_id = p_pedido_id
-    and p.id = pl.producto_id;
+    and pl.owner_id = v_uid
+    and p.id = pl.producto_id
+    and p.owner_id = v_uid;
 
   update public.pedidos pe
   set estado = 'cancelado',
       cancelado_at = now()
-  where pe.id = p_pedido_id;
+  where pe.id = p_pedido_id
+    and pe.owner_id = v_uid;
 end;
 $$;
 
 -- ---------------------------------------------------------------------------
 -- enviar_pedido: solo desde 'pendiente'.
+-- security definer: exige sesión y filtra todo por owner_id = v_uid.
 -- ---------------------------------------------------------------------------
 
 create or replace function public.enviar_pedido(p_pedido_id uuid)
 returns void
 language plpgsql
-security invoker
+security definer
 set search_path = ''
 as $$
 declare
   v_estado text;
+  v_uid uuid := auth.uid();
 begin
+  if v_uid is null then
+    raise exception 'NO_AUTENTICADO';
+  end if;
+
   select pe.estado
   into v_estado
   from public.pedidos pe
   where pe.id = p_pedido_id
+    and pe.owner_id = v_uid
   for update;
 
   if not found then
@@ -344,7 +369,8 @@ begin
   update public.pedidos pe
   set estado = 'enviado',
       enviado_at = now()
-  where pe.id = p_pedido_id;
+  where pe.id = p_pedido_id
+    and pe.owner_id = v_uid;
 end;
 $$;
 

@@ -9,6 +9,7 @@ const STOCK_PREFIX = "STOCK_INSUFICIENTE";
 
 /** Errores de negocio que lanzan las funciones SQL (`raise exception '<CODIGO>'`). */
 const MESSAGES_BY_CODE: Record<string, string> = {
+  NO_AUTENTICADO: "Tu sesión ha caducado. Vuelve a entrar.",
   CLIENTE_NO_ENCONTRADO: "El cliente no existe o ya no está disponible.",
   PEDIDO_VACIO: "El pedido tiene que tener al menos una línea.",
   CANTIDAD_INVALIDA: "Las cantidades tienen que ser números enteros mayores que cero.",

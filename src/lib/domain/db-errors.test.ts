@@ -4,6 +4,12 @@ import { dbErrorMessage } from "@/lib/domain/db-errors";
 const GENERIC = "No se ha podido completar la operación. Inténtalo de nuevo.";
 
 describe("dbErrorMessage", () => {
+  it("traduce sesión no autenticada", () => {
+    expect(dbErrorMessage({ message: "NO_AUTENTICADO" })).toBe(
+      "Tu sesión ha caducado. Vuelve a entrar.",
+    );
+  });
+
   it("traduce cliente no encontrado", () => {
     expect(dbErrorMessage({ message: "CLIENTE_NO_ENCONTRADO" })).toBe(
       "El cliente no existe o ya no está disponible.",
