@@ -52,6 +52,10 @@ supabase/
 
 ## Cómo se escribe el código
 
+- **Cada ruta privada nueva** (p. ej. `productos/nuevo`, `pedidos/[id]`) lleva su
+  `loading.tsx` con `export { SectionLoading as default } from "@/components/section-loading";`.
+  Sin él, Next 16 avisa de datos sin caché durante la navegación. El cliente de Supabase de
+  servidor ya llama a `connection()`: no lo uses dentro de `"use cache"`.
 - **Server first.** Lee datos en Server Components. Escribe con Server Actions
   (`"use server"`) en archivos `actions.ts` junto a la página. Client Components solo
   para interactividad real (formulario de líneas del pedido, confirmaciones).

@@ -24,7 +24,7 @@ export default function PrivateLayout({ children }: { children: React.ReactNode 
       </header>
 
       <main className="mx-auto w-full max-w-5xl flex-1 px-4 pt-8 pb-16 sm:px-6 sm:pt-10">
-        <Suspense fallback={<p className="letterhead text-ink-soft">Cargando…</p>}>{children}</Suspense>
+        {children}
       </main>
     </div>
   );

@@ -1,10 +1,16 @@
 import "server-only";
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
+import { connection } from "next/server";
 import { getSupabaseEnv } from "@/lib/supabase/env";
 
-/** Cliente de Supabase para Server Components y Server Actions. Uno nuevo por petición. */
+/**
+ * Cliente de Supabase para Server Components y Server Actions. Uno nuevo por petición.
+ * `connection()` aplaza todo lo que viene después hasta la petición real: Supabase Auth usa
+ * `Date.now()`, que con Cache Components no puede ejecutarse durante el prerenderizado.
+ */
 export async function createClient() {
+  await connection();
   const cookieStore = await cookies();
   const { url, publishableKey } = getSupabaseEnv();
 

@@ -10,12 +10,12 @@ la aprueba (informes en `docs/revisiones/`).
   (Panel, Productos, Clientes, Pedidos) y `/` que redirige a `/panel`. `.env.example`.
   Lógica pura de partida en `src/lib/domain/money.ts` (formatear céntimos en euros, convertir
   "12,50" a 1250) con tests.
-- [ ] **T2 — Base de datos.** `supabase/migrations/0001_esquema.sql`: tablas `productos`,
+- [x] **T2 — Base de datos.** `supabase/migrations/0001_esquema.sql`: tablas `productos`,
   `clientes`, `pedidos` (estado `pendiente | enviado | cancelado`), `pedido_lineas`;
   `owner_id`, RLS y políticas; índices por `owner_id` y claves ajenas; funciones
   `crear_pedido(cliente_id, lineas jsonb)`, `cancelar_pedido(id)`, `enviar_pedido(id)`.
   Tipos de las filas en `src/lib/types.ts`.
-- [ ] **T2b — Identidad visual «Albarán».** (Añadida por decisión del humano: la app no debe
+- [x] **T2b — Identidad visual «Albarán».** (Añadida por decisión del humano: la app no debe
   parecer una plantilla de IA.) Tokens de la guía visual de `develop.md` en `globals.css`,
   fuentes Newsreader / IBM Plex Sans / IBM Plex Mono con `next/font`, y componentes base
   reutilizables (`PageHeader`, `Button`, `Field`, `Stamp`, `LedgerTable`). Rehacer con ese
