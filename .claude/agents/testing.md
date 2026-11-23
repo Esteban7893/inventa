@@ -97,7 +97,8 @@ Sé exigente y concreto. Un "parece correcto" no vale: cada directriz se marca c
   visual de `develop.md`; textos de marketing.
 - **D22** Se sigue la guía visual de `develop.md`: tokens de color definidos en
   `globals.css` y usados desde ahí; títulos en Newsreader; cifras, importes, cantidades, SKU y
-  fechas en IBM Plex Mono con números tabulares y alineados a la derecha en tablas;
+  fechas en IBM Plex Mono con números tabulares; en tablas, importes y cantidades alineados a
+  la derecha (SKU, fechas y referencias pueden ir a la izquierda);
   separaciones con reglas (no tarjetas); estados y alertas como sellos.
 
 ## Formato del informe (obligatorio)

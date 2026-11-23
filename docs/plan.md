@@ -37,3 +37,6 @@ la aprueba (informes en `docs/revisiones/`).
   control de stock y de estados escribiendo directamente por la API REST. Decisión: endurecer
   D7 y D8 — esas dos tablas solo se leen por RLS y se escriben exclusivamente mediante
   funciones `security definer` que filtran por `auth.uid()`.
+- **T2b (ronda 1) — alineación en tablas.** Develop señaló que D22 obligaba a alinear a la
+  derecha también SKU y fechas. Decisión: D22 precisada — solo importes y cantidades van a la
+  derecha; SKU, fechas y referencias siguen en Mono pero pueden ir a la izquierda.
