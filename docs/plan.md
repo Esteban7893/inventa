@@ -3,7 +3,7 @@
 El orquestador asigna cada tarea a Develop y no la marca como hecha hasta que Testing
 la aprueba (informes en `docs/revisiones/`).
 
-- [ ] **T1 — Base y acceso.** Instalar `@supabase/ssr`, `@supabase/supabase-js`, `zod`,
+- [x] **T1 — Base y acceso.** Instalar `@supabase/ssr`, `@supabase/supabase-js`, `zod`,
   `vitest`; scripts `typecheck` y `test`. Clientes de Supabase (`src/lib/supabase/`),
   `src/proxy.ts` que refresca la sesión y manda a `/login` sin sesión. Página `/login`
   (email + contraseña, con errores en español), cerrar sesión, layout privado con navegación
