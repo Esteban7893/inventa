@@ -5,31 +5,26 @@ import { UserMenu } from "@/components/user-menu";
 
 export default function PrivateLayout({ children }: { children: React.ReactNode }) {
   return (
-    <div className="flex flex-1 flex-col bg-zinc-50">
-      <header className="border-b border-zinc-200 bg-white">
-        <div className="mx-auto flex max-w-5xl flex-col gap-3 px-4 py-3">
-          <div className="flex items-center justify-between gap-4">
-            <Link href="/panel" className="flex items-center gap-2 text-lg font-semibold text-zinc-900">
-              <span
-                aria-hidden="true"
-                className="flex size-8 items-center justify-center rounded-lg bg-zinc-900 text-sm font-bold text-white"
-              >
-                I
-              </span>
+    <div className="flex flex-1 flex-col">
+      <header className="mx-auto w-full max-w-5xl px-4 pt-5 sm:px-6 sm:pt-7">
+        <div className="flex items-end justify-between gap-4 pb-3">
+          <Link href="/panel" className="group flex flex-col">
+            <span className="letterhead text-ink-soft">Libro de almacén</span>
+            <span className="font-serif text-[28px] leading-none font-medium text-ink group-hover:text-ink/80">
               Inventa
-            </Link>
-            <Suspense fallback={<div className="h-8 w-28" aria-hidden="true" />}>
-              <UserMenu />
-            </Suspense>
-          </div>
+            </span>
+          </Link>
+          <Suspense fallback={<div className="h-9 w-32" aria-hidden="true" />}>
+            <UserMenu />
+          </Suspense>
+        </div>
+        <div className="rule-thick">
           <MainNav />
         </div>
       </header>
 
-      <main className="mx-auto w-full max-w-5xl flex-1 px-4 py-8">
-        <Suspense fallback={<p className="text-sm text-zinc-500">Cargando…</p>}>
-          {children}
-        </Suspense>
+      <main className="mx-auto w-full max-w-5xl flex-1 px-4 pt-8 pb-16 sm:px-6 sm:pt-10">
+        <Suspense fallback={<p className="letterhead text-ink-soft">Cargando…</p>}>{children}</Suspense>
       </main>
     </div>
   );

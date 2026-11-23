@@ -1,45 +1,22 @@
 "use client";
 
+import { fontVariables } from "@/app/fonts";
+import { ErrorSheet } from "@/components/error-sheet";
+import { Button } from "@/components/ui/button";
+import "./globals.css";
+
 export default function GlobalError({ retry }: { error: unknown; retry: () => void }) {
   return (
-    <html lang="es">
-      <body
-        style={{
-          margin: 0,
-          minHeight: "100vh",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          fontFamily: "system-ui, sans-serif",
-          background: "#fafafa",
-          color: "#18181b",
-          padding: "16px",
-          textAlign: "center",
-        }}
-      >
+    <html lang="es" className={`${fontVariables} h-full antialiased`}>
+      <body className="flex min-h-full flex-col bg-paper font-sans text-ink">
         <title>Error · Inventa</title>
-        <main>
-          <h1 style={{ fontSize: "20px" }}>Algo ha ido mal</h1>
-          <p style={{ color: "#52525b", fontSize: "14px" }}>
-            No hemos podido cargar Inventa. Inténtalo de nuevo en unos segundos.
-          </p>
-          <button
-            type="button"
-            onClick={() => retry()}
-            style={{
-              marginTop: "16px",
-              padding: "10px 16px",
-              borderRadius: "8px",
-              border: "none",
-              background: "#18181b",
-              color: "#fff",
-              fontWeight: 600,
-              cursor: "pointer",
-            }}
-          >
-            Reintentar
-          </button>
-        </main>
+        <ErrorSheet
+          reference="Incidencia"
+          stamp="Error"
+          title="Algo ha ido mal"
+          message="No hemos podido cargar Inventa. Inténtalo de nuevo en unos segundos."
+          action={<Button onClick={() => retry()}>Reintentar</Button>}
+        />
       </body>
     </html>
   );

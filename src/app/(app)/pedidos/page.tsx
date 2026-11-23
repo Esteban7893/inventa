@@ -9,5 +9,5 @@ export const metadata: Metadata = {
 export default async function PedidosPage() {
   await requireUser();
 
-  return <ComingSoon title="Pedidos" description="Aquí podrás crear pedidos y seguir su estado." />;
+  return <ComingSoon folio="04" title="Pedidos" description="Aquí podrás crear pedidos y seguir su estado." />;
 }

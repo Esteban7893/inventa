@@ -1,11 +1,23 @@
-export function ComingSoon({ title, description }: { title: string; description: string }) {
+import { EmptyState } from "@/components/ui/empty-state";
+import { PageHeader } from "@/components/ui/page-header";
+import { Stamp } from "@/components/ui/stamp";
+
+type ComingSoonProps = {
+  /** Folio de la sección en el índice del libro, p. ej. "02". */
+  folio: string;
+  title: string;
+  description: string;
+};
+
+export function ComingSoon({ folio, title, description }: ComingSoonProps) {
   return (
-    <section className="flex flex-col gap-4">
-      <h1 className="text-2xl font-semibold tracking-tight text-zinc-900">{title}</h1>
-      <div className="rounded-xl border border-dashed border-zinc-300 bg-white p-8 text-center">
-        <p className="font-medium text-zinc-800">Próximamente</p>
-        <p className="mt-1 text-sm text-zinc-500">{description}</p>
-      </div>
-    </section>
+    <>
+      <PageHeader eyebrow={`Sección ${folio} · ${title}`} title={title} />
+      <EmptyState
+        stamp={<Stamp tone="ink">Próximamente</Stamp>}
+        title="Esta sección aún no tiene asientos."
+        description={description}
+      />
+    </>
   );
 }

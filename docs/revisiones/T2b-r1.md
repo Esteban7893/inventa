@@ -1,0 +1,42 @@
+# Revisión T2b — ronda 1
+
+**Veredicto: SUSPENSO**
+
+## Comandos
+| Comando | Resultado |
+|---|---|
+| npm run lint | ✅ (`eslint` sin errores ni avisos) |
+| npm run typecheck | ✅ (`tsc --noEmit` sin errores) |
+| npm test | ✅ (3 archivos, 44 tests) |
+| npm run build | ✅ (Next.js 16.4.6; `/panel`, `/productos`, `/clientes` y `/pedidos` en ◐ Partial Prerender; `ƒ Proxy (Middleware)`) |
+
+## Directrices
+| Id | Estado | Evidencia |
+|---|---|---|
+| D1 | ✅ | `npm run lint` sale con código 0 y sin salida. |
+| D2 | ✅ | `npm run typecheck` sale con código 0. |
+| D3 | ✅ | 44/44 tests. T2b no añade funciones a `src/lib/domain/`. |
+| D4 | ✅ | `npm run build` sale con código 0. |
+| D5 | ✅ | `grep` de `any`, `@ts-ignore`, `@ts-expect-error`, `console.*`, `TODO`, `FIXME` y `eslint-disable` en `src/**/*.ts(x)`: sin resultados. El único `//` es un comentario explicativo de T1 en `src/lib/supabase/server.ts:22`, no código comentado. |
+| D6 | ✅ | `grep` de `service_role`, `sb_secret` y `eyJhbGci` en `src`, `supabase` y `.env.example`: sin resultados. `.env.local` lo ignora `.gitignore:34` (`.env*`). `.env.example` solo lleva valores de ejemplo. |
+| D7 | N/A | T2b no toca SQL ni `supabase/`. |
+| D8 | N/A | T2b no toca funciones SQL. |
+| D9 | ✅ | Las cuatro páginas siguen llamando a `await requireUser()` (`src/app/(app)/panel/page.tsx:10`, y lo mismo en productos, clientes y pedidos). En el navegador, tras «Cerrar sesión» se vuelve a `/login`, y abrir `/productos` sin sesión lleva a `/login`. |
+| D10 | N/A | No hay Server Actions nuevas ni cambiadas: `src/app/login/actions.ts` y `src/app/(app)/actions.ts` siguen igual. |
+| D11 | N/A | Sin cambios de base de datos. |
+| D12 | N/A | Sin cambios de base de datos. |
+| D13 | N/A | Sin cambios de base de datos. |
+| D14 | N/A | Sin cambios de base de datos. |
+| D15 | N/A | T2b no muestra importes. |
+| D16 | ✅ | Todo el texto visible está en español. Al enviar el login vacío salen «Revisa los campos marcados.», «Escribe tu email.» y «Escribe tu contraseña.». El 404 dice «Página no encontrada / La página que buscas no existe o se ha movido.». Los títulos de pestaña son «Panel · Inventa», «Iniciar sesión · Inventa», etc. |
+| D17 | ✅ | `src/components/ui/field.tsx:34-53`: `label htmlFor` y asterisco `aria-hidden` con el atributo `required` en el control; el error va bajo el campo, enlazado con `aria-describedby` y `aria-invalid`. Hay leyenda «* Campo obligatorio» (`field.tsx:127-133`). En el navegador los dos campos se marcan en rojo sello con su mensaje debajo, y el aviso general sale encima del formulario. |
+| D18 | ✅ | Existe `EmptyState` (`src/components/ui/empty-state.tsx`) y `LedgerTable` lo exige (`empty`, `ledger-table.tsx:27,48-50`). Las secciones lo usan con «Esta sección aún no tiene asientos.». Todavía no hay acciones destructivas. |
+| D19 | ✅ | Navegador a 375 px: `scrollWidth` = 375 en `/login`, `/panel`, `/pedidos` y el 404. A 375 px la navegación ocupa 343 px de 343 (sin desbordar); los folios «01…04» y el email se ocultan, y «Cerrar sesión» queda visible. `/productos` y `/clientes` solo se vieron a 1280 px, pero usan el mismo componente que `/pedidos`. `LedgerTable` tiene su propio `overflow-x-auto` (`ledger-table.tsx:53`). |
+| D20 | ❌ | `src/proxy.ts` existe y no hay `middleware.ts`. `retry` en `error.tsx` y `global-error.tsx` es la prop correcta según `node_modules/next/dist/docs/01-app/03-api-reference/03-file-conventions/error.md:117-121`. **Pero** con `npm run dev` las cuatro rutas privadas dan un error de Cache Components en consola y en la superposición de Next («4 Issues»): `Route "/panel": Next.js encountered the unstable value \`Date.now()\` while prerendering` en `PrivateLayout (src/app/(app)/layout.tsx:18:13)` → `<UserMenu />` → `requireUser` (`src/lib/auth.ts:12-15`, `supabase.auth.getUser()`). Lo mismo para `/productos`, `/clientes` y `/pedidos`. Es **heredado de T1**: T2b no cambió `auth.ts`, `supabase/server.ts` ni la estructura `Suspense` de `UserMenu`. Aun así incumple la convención de Next 16 para valores inestables (`node_modules/next/dist/docs/01-app/01-getting-started/08-caching.md:329-343`). |
+| D21 | ✅ | `grep` en `src`: sin `gradient` ni `shadow`; sin `rounded-md/lg/xl/2xl/3xl/full` (botones, campos y sellos llevan `rounded-none`); sin colores de Tailwind por defecto (`globals.css:8` vacía la paleta con `--color-*: initial`); los únicos hex son los 7 de la guía (`globals.css:10-16`) y 2 de ellos en `icon.svg`; sin emojis. Inter, Geist y Arial no aparecen (los aciertos de `grep` eran «pointer» e «inline-flex»). En el navegador, `getComputedStyle` da `box-shadow: none` y `border-radius: 0px` en el botón, los campos y el sello. Fuentes cargadas: solo Newsreader, IBM Plex Sans e IBM Plex Mono. Ojo de diseño: el login se lee como la portada de un libro de registro («LIBRO DE ALMACÉN · TOMO I», doble regla, «Inventa» en serif grande, subtítulo en cursiva, índice «PRODUCTOS · CLIENTES · PEDIDOS» al pie). Las secciones llevan membrete «SECCIÓN 0n», título serif, regla de tinta, renglones discontinuos en blanco y sello «PRÓXIMAMENTE» girado. El 404 es una «hoja de incidencia» con sello rojo «SIN REGISTRO». No hay tarjetas, rejillas ni textos de marketing: no parece una plantilla. |
+| D22 | ✅ | Los tokens están en `globals.css:7-21` y se usan como `bg-paper`, `text-ink`, `border-rule`, etc. En el navegador: `body` con fondo `rgb(243,238,227)` y tinta `rgb(29,27,22)`; `h1` en Newsreader 500 (38 px en las secciones a escritorio, 28 px en móvil); el resto en IBM Plex Sans; etiquetas en membrete Plex Mono 11 px en mayúsculas; email del usuario y folios en Mono (`figures`, con `tabular-nums`); campos con fondo `rgb(250,247,240)` y borde de 1 px `rgb(107,100,87)`. Hay un único botón principal en tinta por pantalla y un secundario con borde. Sección activa: subrayado de tinta de 3 px y `aria-current="page"`, correcto en las cuatro. Sello: Mono en mayúsculas, fondo transparente, `rotate: -2deg`. Alineación: `LedgerTable` alinea a la derecha las columnas `numeric` (`ledger-table.tsx:34-36,64`), lo que la D22 precisada permite también para SKU y fechas. Dos casos que he juzgado dentro de la guía: (a) el «Inventa» del login mide 80 px (64 px en móvil), por encima de los 28–40 px de la guía, pero es el rótulo de portada y no un título de página (`login/page.tsx:23`); (b) los errores de formulario usan `Notice` (barra roja a la izquierda, `notice.tsx:17-18`) y no un sello, pero son mensajes de validación (D17), no alertas de estado; los sellos de la guía son todos estados (STOCK BAJO, PENDIENTE…). Aviso para el orquestador: las reglas y bordes se declaran a 1,5 px (`globals.css:47`, `stamp.tsx:26`, `button.tsx:17`) pero en este panel de navegador salen a **1 px**. Incluso un `div` de prueba con `1.5px` da 1 px: es redondeo del navegador, no un fallo del código. |
+
+## Fallos que Develop tiene que corregir
+1. **D20** — `src/lib/auth.ts:11-15` (aflora en `src/app/(app)/layout.tsx:18`, `<UserMenu />`) — Con `npm run dev`, Next 16 (Cache Components) da error en `/panel`, `/productos`, `/clientes` y `/pedidos`: «encountered the unstable value `Date.now()` while prerendering». Lo provoca `supabase.auth.getUser()` dentro de `requireUser`. El fallo viene de T1 y T2b no lo introduce; lo marco porque se ve en todas las pantallas privadas y la directriz pide seguir las convenciones de Next 16. Debería: ninguna ruta privada debe dar errores de prerender en consola. Lo que proponen Next y su documentación (`node_modules/next/dist/docs/01-app/01-getting-started/08-caching.md:335`) es llamar a `await connection()` (de `next/server`) antes de crear el cliente de Supabase en `requireUser`, o en `UserMenu`, que ya está dentro de `<Suspense>`. Después se comprueba con `npm run dev` que la superposición de Next no muestra «Issues» en esas cuatro rutas. Si el orquestador decide que esto queda fuera de T2b, el resto de directrices está en verde.
+
+Cobertura del navegador (`localhost:3000`, panel de navegador integrado, 1280 px y 375 px): login vacío, login con `prueba@inventa.test`, las cuatro secciones, la sección activa, «Cerrar sesión», la redirección sin sesión y el 404. **No** probado en el navegador: `error.tsx` y `global-error.tsx` (no se pueden provocar; solo revisé el código), el anillo de foco con teclado (revisado en `globals.css:72-75` y `button.tsx:17`) y el login con credenciales incorrectas. Al terminar paré el servidor de desarrollo, cerré la pestaña y comprobé que el árbol de trabajo sigue sin cambios.

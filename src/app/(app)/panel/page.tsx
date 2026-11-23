@@ -11,6 +11,7 @@ export default async function PanelPage() {
 
   return (
     <ComingSoon
+      folio="01"
       title="Panel"
       description="Aquí verás el resumen de tu inventario y de tus pedidos del mes."
     />

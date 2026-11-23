@@ -1,16 +1,76 @@
 @import "tailwindcss";
 
+/*
+ * Guía visual «Albarán»: papel, tinta, reglas y sellos.
+ * La paleta de Tailwind se vacía para que solo existan estos colores.
+ */
+@theme {
+  --color-*: initial;
+
+  --color-paper: #f3eee3;
+  --color-paper-raised: #faf7f0;
+  --color-ink: #1d1b16;
+  --color-ink-soft: #6b6457;
+  --color-rule: #b9b1a1;
+  --color-stamp-red: #b3261e;
+  --color-stamp-green: #2f5d3a;
+
+  --text-letterhead: 11px;
+  --text-letterhead--line-height: 1.45;
+  --tracking-letterhead: 0.08em;
+}
+
 @theme inline {
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --font-serif: var(--font-newsreader), ui-serif, Georgia, serif;
+  --font-sans: var(--font-plex-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-plex-mono), ui-monospace, Menlo, monospace;
 }
 
-:root {
-  color-scheme: light;
+/* Etiqueta pequeña tipo membrete: Plex Mono, mayúsculas, 11 px. */
+@utility letterhead {
+  font-family: var(--font-plex-mono), ui-monospace, Menlo, monospace;
+  font-size: var(--text-letterhead);
+  line-height: var(--text-letterhead--line-height);
+  letter-spacing: var(--tracking-letterhead);
+  text-transform: uppercase;
+  font-weight: 500;
 }
 
-body {
-  background: var(--color-zinc-50);
-  color: var(--color-zinc-900);
-  font-family: var(--font-sans), ui-sans-serif, system-ui, sans-serif;
+/* Cifras: Plex Mono con números tabulares. */
+@utility figures {
+  font-family: var(--font-plex-mono), ui-monospace, Menlo, monospace;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Regla gruesa de tinta (1,5 px) bajo títulos y cabeceras. */
+@utility rule-thick {
+  border-bottom: 1.5px solid var(--color-ink);
+}
+
+/* Regla fina discontinua entre filas. */
+@utility rule-dashed {
+  border-bottom: 1px dashed var(--color-rule);
+}
+
+@layer base {
+  :root {
+    color-scheme: light;
+  }
+
+  body {
+    background-color: var(--color-paper);
+    color: var(--color-ink);
+    font-family: var(--font-sans);
+    font-feature-settings: "kern";
+  }
+
+  ::selection {
+    background-color: var(--color-ink);
+    color: var(--color-paper);
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--color-ink);
+    outline-offset: 2px;
+  }
 }
