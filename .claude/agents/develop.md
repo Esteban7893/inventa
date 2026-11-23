@@ -77,6 +77,40 @@ supabase/
   ("Aún no hay productos") y mensajes de error visibles. Que funcione a 375 px de ancho.
 - **Nada de** `console.log`, código comentado, `TODO` ni dependencias que no uses.
 
+## Guía visual: «Albarán»
+
+Inventa tiene que parecer un **albarán o libro de almacén impreso**, no una plantilla de
+panel de administración. Todo sale de los *tokens* de `src/app/globals.css` (`@theme` de
+Tailwind v4); no escribas colores sueltos en los componentes.
+
+- **Papel y tinta.** Fondo papel `#F3EEE3` (superficies elevadas `#FAF7F0`), tinta `#1D1B16`,
+  tinta suave `#6B6457`, regla `#B9B1A1`. Un solo color de alarma: rojo sello `#B3261E`.
+  Verde sello `#2F5D3A` solo para "enviado". Nada más de color.
+- **Tipografía** (con `next/font/google`):
+  - Títulos de página: **Newsreader** (serif), peso 500, grandes (28–40 px), sin negrita extra.
+  - Texto e interfaz: **IBM Plex Sans** 400/500.
+  - Números, cantidades, importes, SKU, fechas y referencias (`Nº 0042`): **IBM Plex Mono**,
+    alineados a la derecha en tablas y con `font-variant-numeric: tabular-nums`.
+  - Etiquetas pequeñas tipo membrete: Plex Mono, MAYÚSCULAS, 11 px, `letter-spacing: .08em`.
+- **Reglas, no tarjetas.** Las secciones se separan con líneas: una regla gruesa de tinta
+  (1.5 px) bajo el título y filas separadas por líneas finas discontinuas. Sin sombras, sin
+  degradados, radio de borde 0–2 px.
+- **Tablas como un libro de registro**: cabecera en membrete (Mono mayúsculas), filas con
+  regla discontinua, números a la derecha en Mono. En móvil, scroll horizontal propio.
+- **Sellos** para estados y alertas: texto Mono en mayúsculas, borde de 1.5 px del color del
+  sello, fondo transparente, ligeramente girado (`-2deg`/`-3deg`). `STOCK BAJO`, `PENDIENTE`,
+  `ENVIADO`, `CANCELADO`.
+- **Botones**: rectangulares; el principal es tinta sólida con texto papel; el secundario,
+  borde de tinta. Un único botón principal por pantalla. Foco visible (contorno de tinta).
+- **Campos**: fondo `#FAF7F0`, borde inferior o borde completo de 1 px de tinta suave,
+  etiqueta en membrete encima.
+- **Cifras grandes del panel**: Plex Mono grande con la etiqueta en membrete; sin cajas
+  alrededor, separadas por reglas verticales u horizontales.
+- **Lo que NO se hace** (lo vigila Testing en D21): fuente Inter/Geist/Arial, degradados,
+  sombras, `rounded-xl`/`rounded-full` en contenedores, píldoras de color de fondo, rejillas
+  de tarjetas iguales, emojis, iconos decorativos de relleno, colores fuera de la paleta,
+  textos de marketing ("potencia tu negocio").
+
 ## Secretos
 
 - Solo se usan `NEXT_PUBLIC_SUPABASE_URL` y `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`.

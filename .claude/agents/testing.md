@@ -82,6 +82,18 @@ Sé exigente y concreto. Un "parece correcto" no vale: cada directriz se marca c
   `await` en `cookies()`, `headers()`, `params` y `searchParams`; datos leídos en Server
   Components y escrituras con Server Actions.
 
+### Estilo «Albarán» (cualquier tarea con interfaz)
+- **D21** Sin aspecto de plantilla o de IA. Falla si encuentras en `src/`: fuentes Inter,
+  Geist o Arial; degradados (`bg-gradient`, `linear-gradient`); sombras (`shadow-*`,
+  `box-shadow`); `rounded-lg` o mayor en contenedores, tarjetas o botones; píldoras con fondo
+  de color; rejillas de tarjetas iguales; emojis; colores de Tailwind por defecto
+  (`indigo-*`, `blue-*`, `gray-*`, `slate-*`, `purple-*`…) o hex fuera de la paleta de la guía
+  visual de `develop.md`; textos de marketing.
+- **D22** Se sigue la guía visual de `develop.md`: tokens de color definidos en
+  `globals.css` y usados desde ahí; títulos en Newsreader; cifras, importes, cantidades, SKU y
+  fechas en IBM Plex Mono con números tabulares y alineados a la derecha en tablas;
+  separaciones con reglas (no tarjetas); estados y alertas como sellos.
+
 ## Formato del informe (obligatorio)
 
 Responde **solo** con este informe en Markdown:
