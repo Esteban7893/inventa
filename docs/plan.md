@@ -29,3 +29,11 @@ la aprueba (informes en `docs/revisiones/`).
 - [ ] **T5 — Panel y acabado.** Panel con nº de productos, productos con stock bajo
   (lista), pedidos del mes e ingresos del mes (pedidos no cancelados). Repaso de estados
   vacíos, móvil y textos. README con cómo se trabajó con los agentes.
+
+## Decisiones del orquestador
+
+- **T2 (ronda 1) — escrituras directas.** Develop avisó de que, con políticas de escritura en
+  `pedidos` y `pedido_lineas` y funciones `security invoker`, un usuario podría saltarse el
+  control de stock y de estados escribiendo directamente por la API REST. Decisión: endurecer
+  D7 y D8 — esas dos tablas solo se leen por RLS y se escriben exclusivamente mediante
+  funciones `security definer` que filtran por `auth.uid()`.

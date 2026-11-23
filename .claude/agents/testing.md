@@ -43,11 +43,17 @@ Sé exigente y concreto. Un "parece correcto" no vale: cada directriz se marca c
 - **D6** Ningún secreto en el código ni en archivos versionados. Solo se usan
   `NEXT_PUBLIC_SUPABASE_URL` y `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`. Nunca `service_role`
   ni `sb_secret_…`. `.env*` está en `.gitignore` salvo `.env.example`, que no lleva valores reales.
-- **D7** Todas las tablas de `public` tienen RLS activado y políticas de `select`, `insert`,
-  `update` y `delete` limitadas a `owner_id = (select auth.uid())`. `owner_id` es
-  `not null default auth.uid()`.
-- **D8** Las funciones SQL son `security invoker` y tienen `set search_path = ''`, con nombres
-  cualificados (`public.tabla`).
+- **D7** Todas las tablas de `public` tienen RLS activado y `owner_id not null default auth.uid()`.
+  `productos` y `clientes` tienen políticas de `select`, `insert`, `update` y `delete` limitadas
+  a `owner_id = (select auth.uid())`. `pedidos` y `pedido_lineas` solo tienen política de
+  `select` para `authenticated`: **no se pueden escribir directamente** desde la API, solo a
+  través de las funciones `crear_pedido`, `cancelar_pedido` y `enviar_pedido` (así nadie puede
+  saltarse el control de stock o de estados con una escritura directa).
+- **D8** Funciones SQL: todas con `set search_path = ''` y nombres cualificados (`public.tabla`).
+  Las que escriben pedidos son `security definer` y por eso, al empezar, exigen
+  `auth.uid()` no nulo y filtran **cada** lectura y escritura por `owner_id = auth.uid()`
+  (nunca tocan filas de otro usuario). El resto, `security invoker`. `execute` revocado a
+  `public` y `anon`, concedido solo a `authenticated`.
 - **D9** Las rutas privadas no se ven sin sesión: `src/proxy.ts` redirige a `/login` y,
   además, cada página o acción privada comprueba el usuario en el servidor.
 - **D10** Cada Server Action valida su entrada con `zod`, comprueba el usuario y nunca acepta
