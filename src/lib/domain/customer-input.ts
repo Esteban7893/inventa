@@ -1,4 +1,4 @@
-import { z } from "zod";
+import { z } from "@/lib/zod";
 
 const NAME_MAX = 120;
 const EMAIL_MAX = 254;

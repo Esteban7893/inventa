@@ -127,6 +127,14 @@ Encargo completo, autocontenido, en `docs/tareas/produccion-bloques-1-y-2.md`
   con búsqueda en el servidor queda como mejora futura. La búsqueda (`ilike`) distingue tildes y
   un `*` actúa como comodín de PostgREST; se acepta porque solo afecta a las filas del propio
   usuario (RLS) y no produce errores.
+- **T12 (ronda 1) — CSP sin nonce.** La guía de CSP de Next 16 exige renderizado dinámico para los
+  nonces y dice que son incompatibles con el prerenderizado parcial, que este proyecto usa
+  (`cacheComponents: true`). Decisión: CSP estática en `headers()` de `next.config.ts`, como en el
+  apartado «Without Nonces» de la guía, con `script-src 'self' 'unsafe-inline'` (los scripts en
+  línea de Next y React cambian en cada petición y no se pueden fijar con hashes). Todo lo demás
+  queda en `'self'` o `'none'`, sin `'unsafe-eval'` en producción y sin `'unsafe-inline'` en
+  estilos. Se hace en dos pasos dentro de la misma ronda: primero `Content-Security-Policy-Report-Only`
+  (commit propio) y, tras recorrer todas las rutas sin violaciones, obligatoria.
 - **T9 — ejecución de pgTAP sin Docker.** `supabase test db --linked` también invoca un
   contenedor Docker (`pg_prove`) y falla en máquinas sin Docker en marcha. Decisión: habilitar
   `pgtap` en el esquema `extensions` mediante migración (`supabase migration new`), escribir los

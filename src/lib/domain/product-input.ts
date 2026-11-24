@@ -1,4 +1,4 @@
-import { z } from "zod";
+import { z } from "@/lib/zod";
 import { parseEuros } from "@/lib/domain/money";
 
 /** Precio máximo de un producto: 1.000.000,00 € (cabe de sobra en la columna `integer`). */
