@@ -87,6 +87,7 @@ Orquestador --tarea--> Develop --entrega--> Testing --informe--> Orquestador
 | T6 — Integración continua | [r2](docs/revisiones/T6-r2.md) | SUSPENSO | Lista del README partida por el párrafo de protección de `main` (D23) |
 | T6 — Integración continua | [r3](docs/revisiones/T6-r3.md) | APROBADO | |
 | T7 — Migraciones con historial | [r1](docs/revisiones/T7-r1.md) | APROBADO | |
+| T7 — Migraciones con historial | [r2](docs/revisiones/T7-r2.md) | APROBADO | |
 | T8 — Tipos generados | [r1](docs/revisiones/T8-r1.md) | APROBADO | |
 | T9 — Tests de base de datos (pgTAP) | [r1](docs/revisiones/T9-r1.md) | APROBADO | |
 | T10 — Tests E2E (Playwright) | [r1](docs/revisiones/T10-r1.md) | SUSPENSO | `actions/upload-artifact@v4` en runtime `node20` en CI (D23) |
