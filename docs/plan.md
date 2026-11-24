@@ -93,6 +93,25 @@ Encargo completo, autocontenido, en `docs/tareas/produccion-bloques-1-y-2.md`
   el artefacto de Playwright solo lleva capturas (el informe HTML y las trazas guardarían la
   contraseña del usuario E2E en un repositorio público), y el job E2E tiene su propio grupo de
   concurrencia sin cancelación; `Calidad` y `Secretos` siguen cancelando las ejecuciones viejas.
+- **T11–T14 — migraciones en dos fases.** La app de la rama, sus E2E, los tests pgTAP nuevos y
+  `npm run db:types` necesitan que la migración ya exista en Supabase, pero la regla de T7 dice que
+  se aplica cuando Testing aprueba. Decisión: en las tareas con migración, Testing revisa primero
+  **solo la migración** (una ronda propia: la ejecuta con sus tests dentro de
+  `begin … rollback`, fuera del repositorio). Si la aprueba, el orquestador hace `supabase db push`,
+  pasa los advisors y regenera los tipos; después Testing hace la revisión completa en la ronda
+  siguiente, con E2E. Desde ese momento la migración es inmutable: cualquier arreglo va en una
+  migración nueva. Sigue valiendo que cada migración tiene que ser compatible con el código de `main`.
+- **T11 — borrador de otra herramienta.** Gemini dejó sin aplicar un borrador de T11
+  (`20261124114049_consultas_escalables.sql` y `02_consultas_y_permisos.sql`). Develop lo usa solo
+  como referencia: la migración y los tests de T11 son nuevos y pasan por el bucle completo.
+- **T11 (ronda 1) — colación de `nombre`.** Para paginar productos y clientes en SQL sin cambiar
+  el orden que ve hoy el usuario (`Intl.Collator("es", { numeric: true })`: «nata, Nube, Ñandú»,
+  «Item 2, Item 10»), la migración crea la colación ICU `public.es_natural` y la pone en
+  `productos.nombre` y `clientes.nombre`. Es el único cambio de T11 que no se limita a añadir; se
+  acepta porque la colación es determinista (la igualdad sigue siendo byte a byte), `ilike` sigue
+  funcionando, el código de `main` no ordena por `nombre` en SQL y las tablas son pequeñas (el
+  bloqueo al reconstruir los índices es breve). Los índices `*_owner_id_idx` antiguos se mantienen,
+  aunque los nuevos los cubren, para no quitar nada en esta migración.
 - **T9 — ejecución de pgTAP sin Docker.** `supabase test db --linked` también invoca un
   contenedor Docker (`pg_prove`) y falla en máquinas sin Docker en marcha. Decisión: habilitar
   `pgtap` en el esquema `extensions` mediante migración (`supabase migration new`), escribir los
