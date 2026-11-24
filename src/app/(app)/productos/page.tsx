@@ -1,11 +1,15 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { SearchForm } from "@/components/search-form";
 import { ButtonLink } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { LedgerTable, type LedgerColumn } from "@/components/ui/ledger-table";
 import { PageHeader } from "@/components/ui/page-header";
+import { Pagination } from "@/components/ui/pagination";
 import { Stamp } from "@/components/ui/stamp";
 import { requireUser } from "@/lib/auth";
+import { readPanelSummary } from "@/lib/domain/dashboard";
+import { listHref, pageCount, pageRange, parsePage, parseSearch, searchFilter } from "@/lib/domain/listing";
 import { formatCents } from "@/lib/domain/money";
 import { isLowStock } from "@/lib/domain/stock";
 import { createClient } from "@/lib/supabase/server";
@@ -18,8 +22,6 @@ export const metadata: Metadata = {
 type ProductRow = Pick<Product, "id" | "nombre" | "sku" | "precio_cents" | "stock" | "stock_minimo"> & {
   low: boolean;
 };
-
-const byName = new Intl.Collator("es", { sensitivity: "base", numeric: true });
 
 const COLUMNS: ReadonlyArray<LedgerColumn<ProductRow>> = [
   {
@@ -67,22 +69,46 @@ function plural(count: number, one: string, many: string): string {
   return `${count} ${count === 1 ? one : many}`;
 }
 
-export default async function ProductosPage() {
+/** PostgREST responde así cuando la página pedida está más allá de la última. */
+const PAGE_OUT_OF_RANGE = "PGRST103";
+
+export default async function ProductosPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
+}) {
   await requireUser();
+  const params = await searchParams;
+  const query = parseSearch(params.q);
+  const page = parsePage(params.pagina);
+  const { from, to } = pageRange(page);
 
   const supabase = await createClient();
-  const { data, error } = await supabase
+  // El orden por nombre lo da la colación es_natural de la base de datos (como en español).
+  let request = supabase
     .from("productos")
-    .select("id, nombre, sku, precio_cents, stock, stock_minimo");
+    .select("id, nombre, sku, precio_cents, stock, stock_minimo", { count: "exact" })
+    .order("nombre")
+    .order("id")
+    .range(from, to);
+  if (query) {
+    request = request.or(searchFilter(["nombre", "sku"], query));
+  }
+  const [result, summaryResult] = await Promise.all([request, supabase.rpc("panel_resumen").single()]);
 
-  if (error) {
+  const outOfRange = result.error?.code === PAGE_OUT_OF_RANGE;
+  if ((result.error && !outOfRange) || summaryResult.error) {
     throw new Error("No se han podido cargar los productos.");
   }
 
-  const products: ProductRow[] = data
-    .map((product) => ({ ...product, low: isLowStock(product.stock, product.stock_minimo) }))
-    .sort((a, b) => byName.compare(a.nombre, b.nombre));
-  const lowCount = products.filter((product) => product.low).length;
+  const products: ProductRow[] = (result.data ?? []).map((product) => ({
+    ...product,
+    low: isLowStock(product.stock, product.stock_minimo),
+  }));
+  const { inventory } = readPanelSummary(summaryResult.data);
+  const total = result.count ?? 0;
+  const pages = pageCount(total);
+  const hrefFor = (target: number) => listHref("/productos", { q: query, pagina: target });
 
   return (
     <>
@@ -92,29 +118,70 @@ export default async function ProductosPage() {
         actions={<ButtonLink href="/productos/nuevo">Nuevo producto</ButtonLink>}
       />
 
-      {products.length > 0 && (
-        <p className="letterhead mb-4 text-ink-soft">
-          {plural(products.length, "producto", "productos")}
-          {" · "}
-          <span className={lowCount > 0 ? "text-stamp-red" : undefined}>
-            {lowCount === 0 ? "ninguno bajo mínimo" : `${lowCount} bajo mínimo`}
-          </span>
-        </p>
+      {inventory.products > 0 && (
+        <>
+          <p className="letterhead mb-4 text-ink-soft">
+            {plural(inventory.products, "producto", "productos")}
+            {" · "}
+            <span className={inventory.lowStock > 0 ? "text-stamp-red" : undefined}>
+              {inventory.lowStock === 0 ? "ninguno bajo mínimo" : `${inventory.lowStock} bajo mínimo`}
+            </span>
+          </p>
+          <SearchForm action="/productos" label="Buscar por nombre o SKU" query={query} />
+          {query && !outOfRange && total > 0 && (
+            <p role="status" className="letterhead mb-4 text-ink">
+              {plural(total, "producto", "productos")} con «{query}»
+            </p>
+          )}
+        </>
       )}
 
-      <LedgerTable
-        caption="Productos ordenados por nombre"
-        columns={COLUMNS}
-        rows={products}
-        rowKey={(product) => product.id}
-        minWidth={680}
-        empty={
-          <EmptyState
-            title="Aún no hay productos."
-            description="Da de alta el primero con «Nuevo producto» para empezar a llevar el stock."
-          />
-        }
-      />
+      {outOfRange ? (
+        <EmptyState
+          title="Esta página no existe."
+          description="El listado tiene menos páginas. Puede que se hayan borrado productos."
+          action={
+            <ButtonLink href={hrefFor(1)} variant="secondary">
+              Ir a la primera página
+            </ButtonLink>
+          }
+        />
+      ) : (
+        <LedgerTable
+          caption="Productos ordenados por nombre"
+          columns={COLUMNS}
+          rows={products}
+          rowKey={(product) => product.id}
+          minWidth={680}
+          empty={
+            query ? (
+              <EmptyState
+                title={`Ningún producto coincide con «${query}».`}
+                description="Prueba con otra parte del nombre o del SKU."
+                action={
+                  <ButtonLink href="/productos" variant="secondary">
+                    Ver todos los productos
+                  </ButtonLink>
+                }
+              />
+            ) : (
+              <EmptyState
+                title="Aún no hay productos."
+                description="Da de alta el primero con «Nuevo producto» para empezar a llevar el stock."
+              />
+            )
+          }
+        />
+      )}
+
+      {!outOfRange && (
+        <Pagination
+          label="Páginas de productos"
+          previousHref={page > 1 ? hrefFor(page - 1) : null}
+          nextHref={page < pages ? hrefFor(page + 1) : null}
+          status={`Página ${page} de ${pages}`}
+        />
+      )}
     </>
   );
 }

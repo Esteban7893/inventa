@@ -171,6 +171,59 @@ export type Database = {
         Returns: string
       }
       enviar_pedido: { Args: { p_pedido_id: string }; Returns: undefined }
+      panel_resumen: {
+        Args: { p_ahora?: string }
+        Returns: {
+          cancelados_mes: number
+          cancelados_mes_anterior: number
+          ingresos_mes_anterior_cents: number
+          ingresos_mes_cents: number
+          mes_actual: string
+          mes_anterior: string
+          pedidos_mes: number
+          pedidos_mes_anterior: number
+          pendientes: number
+          productos: number
+          productos_bajo_minimo: number
+          unidades: number
+        }[]
+      }
+      pedidos_pagina: {
+        Args: {
+          p_antes_created_at?: string
+          p_antes_id?: string
+          p_estado?: string
+          p_limite?: number
+        }
+        Returns: {
+          cliente_nombre: string
+          created_at: string
+          estado: string
+          id: string
+          lineas: number
+          total_cents: number
+          unidades: number
+        }[]
+      }
+      productos_bajo_minimo: {
+        Args: { p_limite?: number }
+        Returns: {
+          created_at: string
+          id: string
+          nombre: string
+          owner_id: string
+          precio_cents: number
+          sku: string | null
+          stock: number
+          stock_minimo: number
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "productos"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
     }
     Enums: {
       [_ in never]: never

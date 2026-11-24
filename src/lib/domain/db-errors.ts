@@ -19,6 +19,8 @@ const MESSAGES_BY_CODE: Record<string, string> = {
   TOTAL_DEMASIADO_ALTO: "El total del pedido es demasiado alto.",
   PEDIDO_NO_ENCONTRADO: "El pedido no existe o ya no está disponible.",
   ESTADO_INVALIDO: "Solo se pueden enviar o cancelar pedidos pendientes.",
+  CURSOR_INVALIDO: "El enlace de esta página de pedidos no es válido. Vuelve a la primera página.",
+  FILTRO_INVALIDO: "Ese filtro de estado no existe. Elige uno de la lista.",
 };
 
 /** Violación de clave ajena al borrar (`on delete restrict`). */

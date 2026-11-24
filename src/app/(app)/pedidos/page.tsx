@@ -5,11 +5,22 @@ import { ButtonLink } from "@/components/ui/button";
 import { cx } from "@/components/ui/cx";
 import { EmptyState } from "@/components/ui/empty-state";
 import { LedgerTable, type LedgerColumn } from "@/components/ui/ledger-table";
+import { Notice } from "@/components/ui/notice";
 import { PageHeader } from "@/components/ui/page-header";
+import { Pagination } from "@/components/ui/pagination";
 import { requireUser } from "@/lib/auth";
 import { formatDate } from "@/lib/domain/dates";
+import { dbErrorMessage } from "@/lib/domain/db-errors";
 import { formatCents } from "@/lib/domain/money";
 import { orderReference, parseOrderStatus } from "@/lib/domain/order";
+import {
+  CURSOR_PARAMS,
+  ORDER_PAGE_SIZE,
+  orderListHref,
+  orderPageErrorMessage,
+  parseOrderCursor,
+  splitOrderPage,
+} from "@/lib/domain/order-cursor";
 import { createClient } from "@/lib/supabase/server";
 import type { Order, OrderStatus } from "@/lib/types";
 
@@ -72,37 +83,53 @@ function readStatus(value: string | string[] | undefined): OrderStatus | null {
   return found?.status ?? null;
 }
 
-function filterHref(status: OrderStatus | null): string {
-  return status ? `/pedidos?estado=${status}` : "/pedidos";
-}
-
 export default async function PedidosPage({
   searchParams,
 }: {
   searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 }) {
   await requireUser();
-  const status = readStatus((await searchParams).estado);
+  const params = await searchParams;
+  const status = readStatus(params.estado);
+  const parsedCursor = parseOrderCursor(params[CURSOR_PARAMS.createdAt], params[CURSOR_PARAMS.id]);
+  const cursor = parsedCursor.kind === "ok" ? parsedCursor.cursor : null;
 
   const supabase = await createClient();
-  const { data, error } = await supabase
-    .from("pedidos")
-    .select("id, estado, total_cents, created_at, clientes(nombre), pedido_lineas(cantidad)")
-    .order("created_at", { ascending: false });
+  const [pageResult, totalResult, pendingResult] = await Promise.all([
+    // Un cursor manipulado en la URL ni siquiera llega a la base de datos.
+    parsedCursor.kind === "invalid"
+      ? null
+      : supabase.rpc("pedidos_pagina", {
+          p_estado: status ?? undefined,
+          p_antes_created_at: cursor?.createdAt,
+          p_antes_id: cursor?.id,
+          // Uno de más para saber si hay página siguiente.
+          p_limite: ORDER_PAGE_SIZE + 1,
+        }),
+    supabase.from("pedidos").select("id", { count: "exact", head: true }),
+    supabase.from("pedidos").select("id", { count: "exact", head: true }).eq("estado", "pendiente"),
+  ]);
 
-  if (error) {
+  if (totalResult.error || pendingResult.error) {
     throw new Error("No se han podido cargar los pedidos.");
   }
+  let linkError = parsedCursor.kind === "invalid" ? dbErrorMessage({ message: "CURSOR_INVALIDO" }) : null;
+  if (pageResult?.error) {
+    linkError = orderPageErrorMessage(pageResult.error);
+    if (linkError === null) {
+      throw new Error("No se han podido cargar los pedidos.");
+    }
+  }
 
-  const orders: OrderRow[] = data.map(({ clientes, pedido_lineas, estado, ...order }) => ({
-    ...order,
-    estado: parseOrderStatus(estado),
-    cliente: clientes?.nombre ?? "—",
-    lineas: pedido_lineas.length,
-    unidades: pedido_lineas.reduce((sum, line) => sum + line.cantidad, 0),
-  }));
-  const pendingCount = orders.filter((order) => order.estado === "pendiente").length;
-  const shown = status ? orders.filter((order) => order.estado === status) : orders;
+  const page = splitOrderPage(
+    (pageResult?.data ?? []).map(({ cliente_nombre, estado, ...order }) => ({
+      ...order,
+      estado: parseOrderStatus(estado),
+      cliente: cliente_nombre,
+    })),
+  );
+  const totalCount = totalResult.count ?? 0;
+  const pendingCount = pendingResult.count ?? 0;
   const activeFilter = FILTERS.find((filter) => filter.status === status) ?? FILTERS[0];
 
   return (
@@ -110,10 +137,10 @@ export default async function PedidosPage({
       <PageHeader
         eyebrow="Sección 04 · Pedidos"
         title="Pedidos"
-        actions={orders.length > 0 ? <ButtonLink href="/pedidos/nuevo">Nuevo pedido</ButtonLink> : null}
+        actions={totalCount > 0 ? <ButtonLink href="/pedidos/nuevo">Nuevo pedido</ButtonLink> : null}
       />
 
-      {orders.length === 0 ? (
+      {totalCount === 0 ? (
         <EmptyState
           title="Aún no hay pedidos."
           description="Crea el primero: elige un cliente, añade productos y el stock se descuenta al guardarlo."
@@ -123,7 +150,7 @@ export default async function PedidosPage({
         <>
           <div className="mb-4 flex flex-wrap items-baseline justify-between gap-x-6 gap-y-3">
             <p className="letterhead text-ink-soft">
-              {plural(orders.length, "pedido", "pedidos")}
+              {plural(totalCount, "pedido", "pedidos")}
               {" · "}
               {plural(pendingCount, "pendiente", "pendientes")}
             </p>
@@ -134,7 +161,7 @@ export default async function PedidosPage({
                   return (
                     <li key={filter.label}>
                       <Link
-                        href={filterHref(filter.status)}
+                        href={orderListHref(filter.status)}
                         aria-current={active ? "page" : undefined}
                         className={cx(
                           "letterhead inline-block border-b-[1.5px] pb-0.5 transition-colors",
@@ -152,27 +179,56 @@ export default async function PedidosPage({
             </nav>
           </div>
 
-          <LedgerTable
-            caption={
-              status
-                ? `Pedidos ${activeFilter.label.toLowerCase()}, del más reciente al más antiguo`
-                : "Pedidos, del más reciente al más antiguo"
-            }
-            columns={COLUMNS}
-            rows={shown}
-            rowKey={(order) => order.id}
-            minWidth={760}
-            empty={
-              <EmptyState
-                title={activeFilter.empty}
-                action={
-                  <ButtonLink href="/pedidos" variant="secondary">
-                    Ver todos los pedidos
-                  </ButtonLink>
+          {linkError ? (
+            <div className="flex flex-col items-start gap-4">
+              <Notice>{linkError}</Notice>
+              <ButtonLink href={orderListHref(status)} variant="secondary">
+                Ir a la primera página
+              </ButtonLink>
+            </div>
+          ) : (
+            <>
+              <LedgerTable
+                caption={
+                  status
+                    ? `Pedidos ${activeFilter.label.toLowerCase()}, del más reciente al más antiguo`
+                    : "Pedidos, del más reciente al más antiguo"
+                }
+                columns={COLUMNS}
+                rows={page.rows}
+                rowKey={(order) => order.id}
+                minWidth={760}
+                empty={
+                  cursor ? (
+                    <EmptyState
+                      title="No hay pedidos más antiguos."
+                      action={
+                        <ButtonLink href={orderListHref(status)} variant="secondary">
+                          Volver a los más recientes
+                        </ButtonLink>
+                      }
+                    />
+                  ) : (
+                    <EmptyState
+                      title={activeFilter.empty}
+                      action={
+                        <ButtonLink href="/pedidos" variant="secondary">
+                          Ver todos los pedidos
+                        </ButtonLink>
+                      }
+                    />
+                  )
                 }
               />
-            }
-          />
+              <Pagination
+                label="Páginas de pedidos"
+                previousHref={cursor ? orderListHref(status) : null}
+                previousLabel="← Los más recientes"
+                nextHref={page.next ? orderListHref(status, page.next) : null}
+                nextLabel="Más antiguos →"
+              />
+            </>
+          )}
         </>
       )}
     </>
