@@ -1,4 +1,4 @@
-import { z } from "zod";
+import { z } from "@/lib/zod";
 import { parseQuantity, validateLines, type LineErrors } from "@/lib/domain/order";
 import type { CreateOrderArgs } from "@/lib/types";
 
