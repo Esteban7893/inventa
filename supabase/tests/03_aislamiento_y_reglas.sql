@@ -8,21 +8,38 @@
 begin;
 
 -- Ayudantes: ejecutan p_sql con el rol y los claims de p_claims y vuelven al rol de la sesión.
--- Si p_sql falla, la subtransacción se deshace (también el cambio de rol).
+-- pg_temp.como cambia de rol fuera de cualquier bloque que capture errores: si el cambio
+-- falla, el archivo entero falla (no pasa en vacío). sqlstate_de y mensaje_de solo capturan
+-- el error de p_sql; valor_de y filas_de no capturan nada.
+create function pg_temp.como(p_claims jsonb)
+returns void
+language plpgsql
+as $$
+begin
+  execute format('set local role %I', p_claims ->> 'role');
+  if current_user::text <> p_claims ->> 'role' then
+    raise exception 'CAMBIO_DE_ROL_FALLIDO: %', p_claims ->> 'role';
+  end if;
+  perform set_config('request.jwt.claims', p_claims::text, true);
+end;
+$$;
 
 -- SQLSTATE del error, o '00000' si no falla.
 create function pg_temp.sqlstate_de(p_claims jsonb, p_sql text)
 returns text
 language plpgsql
 as $$
+declare
+  v_resultado text := '00000';
 begin
-  execute format('set local role %I', p_claims ->> 'role');
-  perform set_config('request.jwt.claims', p_claims::text, true);
-  execute p_sql;
+  perform pg_temp.como(p_claims);
+  begin
+    execute p_sql;
+  exception when others then
+    v_resultado := sqlstate;
+  end;
   reset role;
-  return '00000';
-exception when others then
-  return sqlstate;
+  return v_resultado;
 end;
 $$;
 
@@ -31,14 +48,17 @@ create function pg_temp.mensaje_de(p_claims jsonb, p_sql text)
 returns text
 language plpgsql
 as $$
+declare
+  v_resultado text := 'SIN_ERROR';
 begin
-  execute format('set local role %I', p_claims ->> 'role');
-  perform set_config('request.jwt.claims', p_claims::text, true);
-  execute p_sql;
+  perform pg_temp.como(p_claims);
+  begin
+    execute p_sql;
+  exception when others then
+    v_resultado := sqlerrm;
+  end;
   reset role;
-  return 'SIN_ERROR';
-exception when others then
-  return sqlerrm;
+  return v_resultado;
 end;
 $$;
 
@@ -50,8 +70,7 @@ as $$
 declare
   v_valor text;
 begin
-  execute format('set local role %I', p_claims ->> 'role');
-  perform set_config('request.jwt.claims', p_claims::text, true);
+  perform pg_temp.como(p_claims);
   execute p_sql into v_valor;
   reset role;
   return v_valor;
@@ -66,8 +85,7 @@ as $$
 declare
   v_filas integer;
 begin
-  execute format('set local role %I', p_claims ->> 'role');
-  perform set_config('request.jwt.claims', p_claims::text, true);
+  perform pg_temp.como(p_claims);
   execute p_sql;
   get diagnostics v_filas = row_count;
   reset role;

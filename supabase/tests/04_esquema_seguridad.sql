@@ -169,7 +169,12 @@ begin
       select c.relname from pg_catalog.pg_class c
       where c.relnamespace = 'public'::regnamespace
         and c.relkind = 'v'
-        and not coalesce(c.reloptions @> array['security_invoker=true'], false)
+        and not exists (
+          -- Postgres guarda la opción tal como se escribió (on, true, yes, 1…).
+          select 1 from pg_catalog.pg_options_to_table(c.reloptions) as o
+          where o.option_name = 'security_invoker'
+            and lower(o.option_value) in ('on', 't', 'tr', 'tru', 'true', 'y', 'ye', 'yes', '1')
+        )
     $sql$,
     '15 - ninguna vista de public se salta RLS (todas con security_invoker)'
   );

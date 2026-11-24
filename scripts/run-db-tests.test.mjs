@@ -1,4 +1,4 @@
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
@@ -72,6 +72,103 @@ describe("checkTestFileSource", () => {
 
   it("rechaza un archivo vacío", () => {
     expect(checkTestFileSource("")).toHaveLength(4);
+  });
+
+  const CONTROL_ERROR = /sentencias de control de transacción/;
+
+  it("rechaza un end; de primer nivel (equivale a COMMIT) seguido de más sentencias", () => {
+    const source = `begin;
+select extensions.plan(1);
+end;
+insert into public.clientes (nombre) values ('x');
+begin;
+select * from extensions.finish();
+rollback;
+`;
+    const errors = checkTestFileSource(source);
+    expect(errors.some((error) => CONTROL_ERROR.test(error))).toBe(true);
+    expect(errors.join(" ")).toContain("`end;`");
+  });
+
+  it("rechaza un rollback; intermedio seguido de más sentencias", () => {
+    const source = VALID_SOURCE.replace(
+      "select * from pg_temp.run_tests();",
+      "rollback;\ninsert into public.clientes (nombre) values ('x');\nselect * from pg_temp.run_tests();",
+    );
+    expect(checkTestFileSource(source).some((error) => CONTROL_ERROR.test(error))).toBe(true);
+  });
+
+  it.each([
+    ["start transaction", "start transaction;"],
+    ["abort", "abort;"],
+    ["commit en mayúsculas", "COMMIT;"],
+    ["savepoint", "savepoint s1;"],
+    ["prepare transaction", "prepare transaction 'x';"],
+  ])("rechaza %s entre el begin y el rollback", (_name, statement) => {
+    const source = VALID_SOURCE.replace(
+      "select * from pg_temp.run_tests();",
+      `${statement}\nselect * from pg_temp.run_tests();`,
+    );
+    expect(checkTestFileSource(source).some((error) => CONTROL_ERROR.test(error))).toBe(true);
+  });
+
+  it("rechaza commit dentro de un cuerpo $$…$$", () => {
+    const source = VALID_SOURCE.replace("return next extensions.ok(true, 'uno');", "commit;");
+    expect(checkTestFileSource(source)).toContain("El archivo no puede contener `commit`.");
+  });
+
+  it("rechaza un archivo que termina en rollback pero con algo detrás sin punto y coma", () => {
+    const source = `${VALID_SOURCE}delete from public.clientes`;
+    expect(checkTestFileSource(source)).toContain(
+      "El archivo tiene que terminar en `rollback;` para no dejar datos.",
+    );
+  });
+
+  it("rechaza un begin; o un rollback; que solo están en comentarios", () => {
+    const source = VALID_SOURCE.replace("begin;\ncreate", "-- begin;\ncreate").replace(
+      "rollback;",
+      "/* rollback; */",
+    );
+    const errors = checkTestFileSource(source);
+    expect(errors).toContain("El archivo tiene que empezar por `begin;`.");
+    expect(errors).toContain("El archivo tiene que terminar en `rollback;` para no dejar datos.");
+  });
+
+  it("acepta begin, end y rollback dentro de cuerpos $$…$$, $sql$…$sql$ y cadenas", () => {
+    const source = `begin;
+create function pg_temp.run_tests() returns setof text language plpgsql as $$
+begin
+  begin
+    execute $sql$select 'end; rollback; commit'$sql$;
+  exception when others then
+    null;
+  end;
+  return next extensions.plan(1);
+  return next extensions.ok(true, 'end; rollback;');
+  return query select * from extensions.finish();
+end;
+$$;
+select * from pg_temp.run_tests();
+rollback;
+`;
+    expect(checkTestFileSource(source)).toEqual(["El archivo no puede contener `commit`."]);
+    expect(checkTestFileSource(source.replace("rollback; commit'", "rollback;'"))).toEqual([]);
+  });
+
+  it("no cuenta un finish() que solo está comentado dentro del cuerpo", () => {
+    const source = VALID_SOURCE.replace(
+      "return query select * from extensions.finish();",
+      "-- return query select * from extensions.finish();",
+    );
+    expect(checkTestFileSource(source)).toContain("El archivo tiene que llamar a `finish()`.");
+  });
+
+  it("acepta los cuatro archivos reales de supabase/tests", () => {
+    const { files } = listTestFiles(join(process.cwd(), "supabase/tests"));
+    expect(files.length).toBeGreaterThan(0);
+    for (const file of files) {
+      expect(checkTestFileSource(readFileSync(file, "utf8"))).toEqual([]);
+    }
   });
 });
 

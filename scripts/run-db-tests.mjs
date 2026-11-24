@@ -5,8 +5,8 @@
  *
  * - Antes de ejecutar nada (la base de datos es la de producción), comprueba que
  *   `supabase/tests/` solo contiene archivos `.sql` y que cada uno empieza por
- *   `begin;`, termina en `rollback;`, declara `plan(N)`, llama a `finish()` y no
- *   contiene `commit`.
+ *   `begin;`, termina en `rollback;` sin otro control de transacción entre medias,
+ *   declara `plan(N)` y llama a `finish()` (ver `checkTestFileSource`).
  * - Si Docker está disponible y no se pasa `--no-docker`, delega en
  *   `supabase test db --linked`.
  * - En caso contrario, ejecuta cada archivo con
@@ -68,35 +68,174 @@ export function listTestFiles(dir) {
   };
 }
 
+const WORD_CHAR = /[A-Za-z0-9_]/;
+const DOLLAR_TAG = /^\$(?:[A-Za-z_][A-Za-z0-9_]*)?\$/;
+const BEGIN_STATEMENT = /^begin(?:\s+(?:transaction|work))?$/i;
+const ROLLBACK_STATEMENT = /^rollback(?:\s+(?:transaction|work))?$/i;
+const TRANSACTION_CONTROL =
+  /^(?:begin|start|commit|end|abort|rollback|savepoint|release|prepare\s+transaction)\b/i;
+
 /**
- * Comprueba la forma de un archivo de tests antes de ejecutarlo contra la base de datos:
- * empieza por `begin;`, termina en `rollback;` (no deja datos), declara `plan(N)`,
- * llama a `finish()` y no contiene `commit`. Ignora las líneas de comentario `--`.
+ * Separa un texto SQL en dos vistas:
+ * - `text`: sin comentarios (`--` y `/* *\/`, también dentro de los cuerpos `$$…$$`), pero
+ *   con cadenas y cuerpos; sirve para buscar `plan(N)` y `finish()`.
+ * - `code`: sin comentarios, cadenas, identificadores entre comillas ni cuerpos
+ *   `$tag$…$tag$`; lo que queda son las sentencias de primer nivel, separadas por `;`.
+ * Lo que queda sin cerrar (comentario, cadena o cuerpo) se consume hasta el final.
+ * @param {string} source
+ * @returns {{ text: string, code: string }}
+ */
+export function maskSql(source) {
+  let text = "";
+  let code = "";
+  let i = 0;
+  const n = source.length;
+
+  while (i < n) {
+    const ch = source[i];
+    const next = source[i + 1];
+    const prev = source[i - 1] ?? "";
+
+    if (ch === "-" && next === "-") {
+      const newline = source.indexOf("\n", i);
+      i = newline === -1 ? n : newline;
+      text += " ";
+      code += " ";
+      continue;
+    }
+
+    if (ch === "/" && next === "*") {
+      let depth = 1;
+      let j = i + 2;
+      while (j < n && depth > 0) {
+        if (source[j] === "/" && source[j + 1] === "*") {
+          depth += 1;
+          j += 2;
+        } else if (source[j] === "*" && source[j + 1] === "/") {
+          depth -= 1;
+          j += 2;
+        } else {
+          j += 1;
+        }
+      }
+      i = j;
+      text += " ";
+      code += " ";
+      continue;
+    }
+
+    if (ch === "'") {
+      const backslashEscapes = /[eE]/.test(prev) && !WORD_CHAR.test(source[i - 2] ?? "");
+      let j = i + 1;
+      while (j < n) {
+        if (backslashEscapes && source[j] === "\\") {
+          j += 2;
+          continue;
+        }
+        if (source[j] === "'") {
+          if (source[j + 1] === "'") {
+            j += 2;
+            continue;
+          }
+          break;
+        }
+        j += 1;
+      }
+      const stop = Math.min(j + 1, n);
+      text += source.slice(i, stop);
+      code += " '' ";
+      i = stop;
+      continue;
+    }
+
+    if (ch === '"') {
+      let j = i + 1;
+      while (j < n) {
+        if (source[j] === '"') {
+          if (source[j + 1] === '"') {
+            j += 2;
+            continue;
+          }
+          break;
+        }
+        j += 1;
+      }
+      const stop = Math.min(j + 1, n);
+      text += source.slice(i, stop);
+      code += ' "" ';
+      i = stop;
+      continue;
+    }
+
+    if (ch === "$" && !WORD_CHAR.test(prev)) {
+      const tag = DOLLAR_TAG.exec(source.slice(i));
+      if (tag) {
+        const bodyStart = i + tag[0].length;
+        const close = source.indexOf(tag[0], bodyStart);
+        const bodyEnd = close === -1 ? n : close;
+        text += ` ${maskSql(source.slice(bodyStart, bodyEnd)).text} `;
+        code += " $$ ";
+        i = close === -1 ? n : close + tag[0].length;
+        continue;
+      }
+    }
+
+    text += ch;
+    code += ch;
+    i += 1;
+  }
+
+  return { text, code };
+}
+
+/**
+ * Comprueba la forma de un archivo de tests antes de ejecutarlo contra la base de datos
+ * (la de producción). Tiene que:
+ * - empezar por `begin;` y terminar en `rollback;`, sin ninguna otra sentencia de control
+ *   de transacción entre medias (`begin`, `start transaction`, `commit`, `end`, `abort`,
+ *   `rollback`, `savepoint`, `release`, `prepare transaction`): un `end;` equivale a
+ *   COMMIT y un `rollback;` intermedio deja el resto del archivo en autocommit;
+ * - no contener `commit` en ningún sitio, ni siquiera dentro de un cuerpo `$$…$$`;
+ * - declarar `plan(N)` y llamar a `finish()`.
+ * Los comentarios no cuentan, y los cuerpos `$$…$$` y las cadenas no son sentencias.
  * @param {string} source
  * @returns {string[]} errores encontrados (vacío si el archivo es válido)
  */
 export function checkTestFileSource(source) {
-  const code = source
-    .split(/\r?\n/)
-    .filter((line) => !line.trim().startsWith("--"))
-    .join("\n")
-    .trim();
+  const { text, code } = maskSql(source);
+  const trimmed = code.trim();
+  const statements = trimmed
+    .split(";")
+    .map((statement) => statement.trim().replace(/\s+/g, " "))
+    .filter((statement) => statement.length > 0);
 
   /** @type {string[]} */
   const errors = [];
-  if (!/^begin\s*;/i.test(code)) {
+  if (statements.length === 0 || !BEGIN_STATEMENT.test(statements[0])) {
     errors.push("El archivo tiene que empezar por `begin;`.");
   }
-  if (!/\brollback\s*;$/i.test(code)) {
+  if (
+    statements.length < 2 ||
+    !ROLLBACK_STATEMENT.test(statements[statements.length - 1]) ||
+    !trimmed.endsWith(";")
+  ) {
     errors.push("El archivo tiene que terminar en `rollback;` para no dejar datos.");
   }
-  if (/\bcommit\b/i.test(code)) {
+  const inner = statements.slice(1, -1).filter((statement) => TRANSACTION_CONTROL.test(statement));
+  if (inner.length > 0) {
+    errors.push(
+      `El archivo tiene sentencias de control de transacción entre el \`begin;\` inicial y el \`rollback;\` final: ${inner
+        .map((statement) => `\`${statement.split(" ").slice(0, 2).join(" ")};\``)
+        .join(", ")}.`,
+    );
+  }
+  if (/\bcommit\b/i.test(text)) {
     errors.push("El archivo no puede contener `commit`.");
   }
-  if (!/\bplan\s*\(\s*\d+\s*\)/i.test(code)) {
+  if (!/\bplan\s*\(\s*\d+\s*\)/i.test(text)) {
     errors.push("El archivo tiene que declarar el número de pruebas con `plan(N)`.");
   }
-  if (!/\bfinish\s*\(\s*\)/i.test(code)) {
+  if (!/\bfinish\s*\(\s*\)/i.test(text)) {
     errors.push("El archivo tiene que llamar a `finish()`.");
   }
   return errors;

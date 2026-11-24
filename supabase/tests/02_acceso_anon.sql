@@ -1,28 +1,39 @@
 -- Inventa — tests pgTAP del rol anon (D7 y D8): sin sesión no se ejecuta ninguna función de
 -- pedidos ni se lee o escribe ninguna tabla de public. Se exige el código 42501 (permiso
 -- denegado), no "0 filas": si alguien concede select, update o delete a anon, el test falla
--- aunque RLS siguiera filtrando. Un insert sin política también da 42501 (por RLS), así que un
--- grant de insert a anon no pone rojos los casos 08–11; eso lo detecta el caso 04 de
--- 04_esquema_seguridad.sql, que revisa los permisos de anon en el catálogo.
+-- aunque RLS siguiera filtrando. Los update asignan valores literales (no leen la columna),
+-- para que un UPDATE concedido sin SELECT también dé '00000' y ponga el caso en rojo.
+-- Un insert sin política también da 42501 (por RLS), así que un grant de insert a anon no
+-- pone rojos los casos 08–11; eso lo detecta el caso 04 de 04_esquema_seguridad.sql, que
+-- revisa los permisos de anon en el catálogo.
+-- Si la sesión no puede cambiar al rol anon, el archivo entero falla (no pasa en vacío).
 -- Compatible con `supabase test db --linked` (pg_prove) y con `supabase db query --linked -f`:
 -- toda la salida TAP sale de un único select. Termina en rollback: no deja datos.
 
 begin;
 
 -- Ejecuta p_sql con el rol y los claims indicados y devuelve su SQLSTATE ('00000' si no falla).
--- Si falla, la subtransacción se deshace y el rol vuelve al de la sesión.
+-- Solo se captura el error de p_sql; después se vuelve al rol de la sesión.
 create function pg_temp.sqlstate_de(p_claims jsonb, p_sql text)
 returns text
 language plpgsql
 as $$
+declare
+  v_estado text := '00000';
 begin
+  -- Fuera del bloque que captura errores: si no se puede cambiar de rol, el archivo falla.
   execute format('set local role %I', p_claims ->> 'role');
+  if current_user::text <> p_claims ->> 'role' then
+    raise exception 'CAMBIO_DE_ROL_FALLIDO: %', p_claims ->> 'role';
+  end if;
   perform set_config('request.jwt.claims', p_claims::text, true);
-  execute p_sql;
+  begin
+    execute p_sql;
+  exception when others then
+    v_estado := sqlstate;
+  end;
   reset role;
-  return '00000';
-exception when others then
-  return sqlstate;
+  return v_estado;
 end;
 $$;
 
@@ -106,22 +117,22 @@ begin
 
   -- Actualizaciones directas.
   return next extensions.is(
-    pg_temp.sqlstate_de(v_anon, 'update public.productos set stock = stock'),
+    pg_temp.sqlstate_de(v_anon, 'update public.productos set stock = 0'),
     '42501',
     '12 - anon no puede actualizar public.productos (42501)'
   );
   return next extensions.is(
-    pg_temp.sqlstate_de(v_anon, 'update public.clientes set nombre = nombre'),
+    pg_temp.sqlstate_de(v_anon, $sql$update public.clientes set nombre = 'anon'$sql$),
     '42501',
     '13 - anon no puede actualizar public.clientes (42501)'
   );
   return next extensions.is(
-    pg_temp.sqlstate_de(v_anon, 'update public.pedidos set total_cents = total_cents'),
+    pg_temp.sqlstate_de(v_anon, 'update public.pedidos set total_cents = 0'),
     '42501',
     '14 - anon no puede actualizar public.pedidos (42501)'
   );
   return next extensions.is(
-    pg_temp.sqlstate_de(v_anon, 'update public.pedido_lineas set cantidad = cantidad'),
+    pg_temp.sqlstate_de(v_anon, 'update public.pedido_lineas set cantidad = 1'),
     '42501',
     '15 - anon no puede actualizar public.pedido_lineas (42501)'
   );
