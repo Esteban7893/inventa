@@ -91,6 +91,8 @@ Orquestador --tarea--> Develop --entrega--> Testing --informe--> Orquestador
 | T8 — Tipos generados | [r1](docs/revisiones/T8-r1.md) | APROBADO | |
 | T8 — Tipos generados | [r2](docs/revisiones/T8-r2.md) | APROBADO | |
 | T9 — Tests de base de datos (pgTAP) | [r1](docs/revisiones/T9-r1.md) | APROBADO | |
+| T9 — Tests de base de datos (pgTAP) | [r2](docs/revisiones/T9-r2.md) | SUSPENSO | Tests que podían pasar en falso (UPDATE de `anon`, cambio de rol sin comprobar) y guarda de transacciones incompleta (D26) |
+| T9 — Tests de base de datos (pgTAP) | [r3](docs/revisiones/T9-r3.md) | APROBADO | |
 | T10 — Tests E2E (Playwright) | [r1](docs/revisiones/T10-r1.md) | SUSPENSO | `actions/upload-artifact@v4` en runtime `node20` en CI (D23) |
 | T10 — Tests E2E (Playwright) | [r2](docs/revisiones/T10-r2.md) | APROBADO | |
 
