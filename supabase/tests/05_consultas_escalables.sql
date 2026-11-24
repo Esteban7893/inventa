@@ -130,6 +130,8 @@ declare
   v_mes_ahora text;
   v_item10 uuid;
   v_item2 uuid;
+  v_id_nube uuid;
+  v_id_nu uuid;
   v_ca uuid;
   v_pb uuid;
   v_cb uuid;
@@ -147,9 +149,10 @@ declare
   v_o9 uuid;
   v_todos text;
   v_pendientes text;
+  v_ids_c text;
   i integer;
 begin
-  return next extensions.plan(38);
+  return next extensions.plan(41);
 
   -- -------------------------------------------------------------------------
   -- Catálogo: firmas, security invoker, search_path, permisos e índices.
@@ -288,7 +291,17 @@ begin
   -- A: productos (los nombres prueban el orden en español) y un cliente.
   v_item10 := pg_temp.valor_de(v_ja, $sql$insert into public.productos (nombre, precio_cents, stock, stock_minimo) values ('Item 10', 100, 1000, 5) returning id$sql$)::uuid;
   v_item2 := pg_temp.valor_de(v_ja, $sql$insert into public.productos (nombre, precio_cents, stock, stock_minimo) values ('Item 2', 1000, 10, 4) returning id$sql$)::uuid;
-  perform pg_temp.valor_de(v_ja, $sql$insert into public.productos (nombre, precio_cents, stock, stock_minimo) values ('Ábaco', 1, 1, 4), ('Ñu', 1, 2, 2), ('Nube', 1, 0, 0) returning id$sql$);
+  -- Nube y Ñu tienen el mismo deficit (0): sus id van en orden contrario al de sus nombres
+  -- (Nube < Ñu, pero id de Nube > id de Ñu), para que el desempate por nombre no dependa del azar.
+  v_id_nube := gen_random_uuid();
+  v_id_nu := gen_random_uuid();
+  if v_id_nube < v_id_nu then
+    select v_id_nu, v_id_nube into v_id_nube, v_id_nu;
+  end if;
+  perform pg_temp.valor_de(v_ja, format(
+    'insert into public.productos (id, nombre, precio_cents, stock, stock_minimo) values (%L, %L, 1, 0, 0), (%L, %L, 1, 2, 2) returning id',
+    v_id_nube, 'Nube', v_id_nu, 'Ñu'));
+  perform pg_temp.valor_de(v_ja, $sql$insert into public.productos (nombre, precio_cents, stock, stock_minimo) values ('Ábaco', 1, 3, 4) returning id$sql$);
   v_ca := pg_temp.valor_de(v_ja, $sql$insert into public.clientes (nombre) values ('Cliente A') returning id$sql$)::uuid;
 
   -- A: pedidos con crear_pedido (total = cantidad x precio copiado del producto).
@@ -310,9 +323,10 @@ begin
   perform pg_temp.valor_de(v_ja, format('select public.cancelar_pedido(%L)', v_o7));
 
   -- Stock final de A: 5 productos, 56 unidades, 4 bajo minimo (stock <= stock_minimo):
-  -- Ábaco 1/4 (-3), Item 2 3/4 (-1), Nube 0/0 (0), Ñu 2/2 (0); Item 10 50/5 no lo está.
+  -- Item 2 1/4 (-3), Ábaco 3/4 (-1), Nube 0/0 (0), Ñu 2/2 (0); Item 10 50/5 no lo está.
+  -- El orden por deficit (Item 2, Ábaco) es distinto del orden por nombre (Ábaco, Item 2).
   perform pg_temp.valor_de(v_ja, format('update public.productos set stock = 50 where id = %L returning id', v_item10));
-  perform pg_temp.valor_de(v_ja, format('update public.productos set stock = 3 where id = %L returning id', v_item2));
+  perform pg_temp.valor_de(v_ja, format('update public.productos set stock = 1 where id = %L returning id', v_item2));
 
   -- Fechas de los pedidos de A (UTC). Madrid es UTC+2 hasta el 25/10/2026 y UTC+1 después.
   --   o8 2026-09-30 21:59:59Z = 30/09 23:59:59 Madrid -> septiembre, enviado, 900
@@ -413,12 +427,12 @@ begin
 
   return next extensions.is(
     pg_temp.valor_de(v_ja, $sql$select string_agg(nombre, '|') from public.productos_bajo_minimo()$sql$),
-    'Ábaco|Item 2|Nube|Ñu',
-    '25 - bajo minimo de A: stock <= minimo, primero el que mas se aleja y luego por nombre'
+    'Item 2|Ábaco|Nube|Ñu',
+    '25 - bajo minimo de A: stock <= minimo, primero el que mas se aleja (Item 2 antes que Ábaco) y, a igual deficit, por nombre aunque los id vayan al reves (Nube antes que Ñu)'
   );
   return next extensions.is(
     pg_temp.valor_de(v_ja, $sql$select string_agg(nombre, '|') from public.productos_bajo_minimo(2)$sql$),
-    'Ábaco|Item 2',
+    'Item 2|Ábaco',
     '26 - productos_bajo_minimo(2) devuelve solo los dos primeros'
   );
   return next extensions.is(
@@ -493,6 +507,27 @@ begin
     pg_temp.valor_de(v_jc, $sql$select (select count(*) from public.pedidos_pagina(p_limite => 0)) || '|' || (select count(*) from public.pedidos_pagina(p_limite => -1))$sql$),
     '1|1',
     '38 - un limite de 0 o negativo se sube a 1'
+  );
+
+  -- Los 101 pedidos de C se crearon en esta transaccion: todos pendientes y con el mismo
+  -- created_at (now()), asi que el orden es solo id desc y cada borde de pagina es un empate.
+  select string_agg(p.id::text, ',' order by p.id desc) into v_ids_c
+  from public.pedidos p where p.owner_id = v_c;
+  return next extensions.is(
+    (select count(*) || '|' || count(distinct p.created_at) || '|' || count(*) filter (where p.estado = 'pendiente')
+     from public.pedidos p where p.owner_id = v_c),
+    '101|1|101',
+    '39 - C tiene 101 pedidos pendientes con el mismo created_at (empates en todos los bordes de pagina)'
+  );
+  return next extensions.is(
+    pg_temp.recorrer(v_jc, 'pendiente', 7),
+    v_ids_c || '|paginas=15',
+    '40 - con filtro pendiente, paginas de 7 entre empates de created_at: los 101 en orden id desc, sin repetir ni saltar'
+  );
+  return next extensions.is(
+    pg_temp.recorrer(v_jc, null, 7),
+    v_ids_c || '|paginas=15',
+    '41 - sin filtro, paginas de 7 entre empates de created_at: los 101 en orden id desc, sin repetir ni saltar'
   );
 
   return query select * from extensions.finish();
