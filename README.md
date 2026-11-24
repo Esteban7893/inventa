@@ -86,6 +86,7 @@ Orquestador --tarea--> Develop --entrega--> Testing --informe--> Orquestador
 | T6 — Integración continua | [r1](docs/revisiones/T6-r1.md) | APROBADO | |
 | T7 — Migraciones con historial | [r1](docs/revisiones/T7-r1.md) | APROBADO | |
 | T8 — Tipos generados | [r1](docs/revisiones/T8-r1.md) | APROBADO | |
+| T9 — Tests de base de datos (pgTAP) | [r1](docs/revisiones/T9-r1.md) | APROBADO | |
 
 ### Fallos que encontró Testing y cómo se corrigieron
 
@@ -182,6 +183,8 @@ Hace falta Node.js 22 o posterior, la CLI de Supabase y un proyecto de Supabase.
    - `supabase/migrations/0002_revocar_rls_auto_enable.sql`: quita el permiso de ejecución de
      `public.rls_auto_enable()` (función que solo existe si el proyecto tiene activado el RLS
      automático de Supabase).
+   - `supabase/migrations/20261124094951_habilitar_pgtap.sql`: habilita la extensión `pgtap` en
+     el esquema `extensions` para los tests de base de datos.
 
 3. **Datos de demostración (opcional).** Crea primero el usuario `prueba@inventa.test` en
    *Authentication → Users*. Después ejecuta `supabase/seed_demo.sql` en el editor SQL, que
@@ -196,9 +199,15 @@ Hace falta Node.js 22 o posterior, la CLI de Supabase y un proyecto de Supabase.
    npm run lint       # ESLint
    npm run typecheck  # tsc --noEmit
    npm test           # Vitest
+   npm run test:db    # tests pgTAP en supabase/tests/ (no dejan datos)
    npm run build      # build de producción
    npm run db:types   # regenera src/lib/database.types.ts desde el esquema de Supabase
    ```
+
+   Los tests de base de datos viven en `supabase/tests/` (formato pgTAP envuelto en `begin; ... rollback;`,
+   por lo que no dejan filas en ninguna tabla). `npm run test:db` ejecuta `supabase test db --linked`
+   cuando Docker está activo y, si no hay Docker disponible, ejecuta cada archivo con
+   `supabase db query --linked -f` validando estrictamente la salida TAP.
 
 ## Producción
 

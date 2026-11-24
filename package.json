@@ -12,6 +12,7 @@
     "lint": "eslint",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
+    "test:db": "node scripts/run-db-tests.mjs",
     "db:types": "supabase gen types typescript --project-id uqupgywhmmdpjjenxywb > src/lib/database.types.ts"
   },
   "dependencies": {

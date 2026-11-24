@@ -40,7 +40,7 @@ Encargo completo, autocontenido, en `docs/tareas/produccion-bloques-1-y-2.md`
 - [x] **T7 — Migraciones con historial.** `supabase link` + `migration repair` de 0001/0002;
   a partir de aquí solo `supabase db push`.
 - [x] **T8 — Tipos generados.** `supabase gen types` → `src/lib/database.types.ts`.
-- [ ] **T9 — Tests de base de datos.** pgTAP en `supabase/tests/` (las 27 verificaciones de T2).
+- [x] **T9 — Tests de base de datos.** pgTAP en `supabase/tests/` (las 27 verificaciones de T2).
 - [ ] **T10 — Tests E2E.** Playwright en `e2e/` con los flujos críticos.
 - [ ] **T11 — Consultas que escalan.** Paginación, agregados del panel en SQL, índices.
 - [ ] **T12 — Cabeceras de seguridad.** HSTS, CSP (primero report-only) y compañía.
@@ -58,3 +58,11 @@ Encargo completo, autocontenido, en `docs/tareas/produccion-bloques-1-y-2.md`
 - **T2b (ronda 1) — alineación en tablas.** Develop señaló que D22 obligaba a alinear a la
   derecha también SKU y fechas. Decisión: D22 precisada — solo importes y cantidades van a la
   derecha; SKU, fechas y referencias siguen en Mono pero pueden ir a la izquierda.
+- **T9 — ejecución de pgTAP sin Docker.** `supabase test db --linked` también invoca un
+  contenedor Docker (`pg_prove`) y falla en máquinas sin Docker en marcha. Decisión: habilitar
+  `pgtap` en el esquema `extensions` mediante migración (`supabase migration new`), escribir los
+  tests en `supabase/tests/*.sql` en formato pgTAP estándar (`begin; ... plan(N) ... finish();
+  rollback;`, emitiendo todas las líneas TAP en un único `select` para compatibilidad dual) y
+  hacer que `npm run test:db` ejecute `supabase test db --linked` si Docker está activo o, en su
+  defecto, ejecute cada archivo con `supabase db query --linked -f` validando estrictamente la
+  salida TAP (plan, cero `not ok`, cero diagnósticos de fallo).
