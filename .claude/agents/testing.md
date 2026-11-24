@@ -111,6 +111,24 @@ app con el usuario de prueba.
   la derecha (SKU, fechas y referencias pueden ir a la izquierda);
   separaciones con reglas (no tarjetas); estados y alertas como sellos.
 
+### Producción (desde T6; ver `docs/tareas/produccion-bloques-1-y-2.md`)
+- **D23** Todo cambio entra por una rama y un PR; el workflow de CI (lint, tipos, tests,
+  build, escaneo de secretos) está en verde en ese PR.
+- **D24** Los cambios de esquema son migraciones creadas con `supabase migration new` y
+  aplicadas con `supabase db push`; el historial local y remoto coincide
+  (`supabase migration list --linked`). Nunca SQL suelto contra producción.
+- **D25** Los tipos de la base de datos se generan (`npm run db:types`) y el código no
+  redefine a mano lo que ya está en `database.types.ts`.
+- **D26** Las reglas de la base de datos (RLS, stock, atomicidad, estados, aislamiento entre
+  usuarios) tienen tests pgTAP en `supabase/tests/` que pasan y no dejan datos.
+- **D27** Los flujos críticos tienen tests de Playwright en `e2e/`, sin credenciales en el
+  código y dejando los datos como estaban.
+- **D28** Ningún listado ni consulta trae filas sin límite; los agregados se calculan en SQL.
+- **D29** Las respuestas llevan cabeceras de seguridad (HSTS, nosniff, Referrer-Policy,
+  Permissions-Policy, frame-ancestors/X-Frame-Options y CSP) sin violaciones en consola.
+- **D30** Crear un pedido es idempotente: repetir la misma petición no crea un segundo pedido
+  ni descuenta stock dos veces.
+
 ## Formato del informe (obligatorio)
 
 Responde **solo** con este informe en Markdown:

@@ -30,6 +30,24 @@ la aprueba (informes en `docs/revisiones/`).
   (lista), pedidos del mes e ingresos del mes (pedidos no cancelados). Repaso de estados
   vacíos, móvil y textos. README con cómo se trabajó con los agentes.
 
+## Producción (bloques 1 y 2)
+
+Encargo completo, autocontenido, en `docs/tareas/produccion-bloques-1-y-2.md`
+(directrices D23–D30 en `testing.md`). Bloque 1 primero.
+
+- [ ] **T6 — Integración continua.** GitHub Actions (lint, tipos, tests, build, gitleaks),
+  Dependabot, `main` protegida (con confirmación del humano).
+- [ ] **T7 — Migraciones con historial.** `supabase link` + `migration repair` de 0001/0002;
+  a partir de aquí solo `supabase db push`.
+- [ ] **T8 — Tipos generados.** `supabase gen types` → `src/lib/database.types.ts`.
+- [ ] **T9 — Tests de base de datos.** pgTAP en `supabase/tests/` (las 27 verificaciones de T2).
+- [ ] **T10 — Tests E2E.** Playwright en `e2e/` con los flujos críticos.
+- [ ] **T11 — Consultas que escalan.** Paginación, agregados del panel en SQL, índices.
+- [ ] **T12 — Cabeceras de seguridad.** HSTS, CSP (primero report-only) y compañía.
+- [ ] **T13 — Pedidos idempotentes.** Clave de idempotencia en `crear_pedido`.
+- [ ] **T14 — Movimientos de stock.** Tabla de auditoría alimentada por triggers.
+- [ ] **T15 — Endurecer el acceso.** Ajustes de Auth que hace el humano, documentados.
+
 ## Decisiones del orquestador
 
 - **T2 (ronda 1) — escrituras directas.** Develop avisó de que, con políticas de escritura en

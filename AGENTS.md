@@ -7,3 +7,10 @@ This version has breaking changes — APIs, conventions, and file structure may 
 This block is written and re-added by `next dev` — verify at `node_modules/next/dist/server/lib/generate-agent-files.js`. Removing it from a diff only re-creates the uncommitted change; committing it with your work keeps the tree clean.
 
 <!-- END:nextjs-agent-rules -->
+
+# Inventa — para cualquier agente (Claude, Gemini, Codex…)
+
+Antes de trabajar en este repositorio lee `CLAUDE.md` (orquestador y bucle Develop → Testing),
+`.claude/agents/develop.md` y `.claude/agents/testing.md` (DIRECTRICES), y `docs/plan.md`.
+Si te han encargado llevar la app a producción, tu encargo completo está en
+`docs/tareas/produccion-bloques-1-y-2.md`. Nunca uses un MCP/conector de Supabase: usa la CLI.
