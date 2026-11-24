@@ -118,6 +118,13 @@ Tailwind v4); no escribas colores sueltos en los componentes.
   de tarjetas iguales, emojis, iconos decorativos de relleno, colores fuera de la paleta,
   textos de marketing ("potencia tu negocio").
 
+## Base de datos: quién la toca
+
+- **Nunca uses las herramientas MCP de Supabase** (`execute_sql`, `apply_migration`,
+  `list_projects`…): en este entorno apuntan a otra cuenta con proyectos ajenos a Inventa.
+- Los cambios de esquema van en `supabase/migrations/` y los aplica el orquestador.
+- Para probar con datos, usa la propia app con el usuario de prueba.
+
 ## Secretos
 
 - Solo se usan `NEXT_PUBLIC_SUPABASE_URL` y `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`.

@@ -23,7 +23,7 @@ la aprueba (informes en `docs/revisiones/`).
 - [x] **T3 — Productos y clientes.** Listado, alta, edición y borrado de productos (nombre,
   SKU, precio, stock, stock mínimo; marca de "stock bajo") y de clientes (nombre, email,
   teléfono). Lógica `isLowStock` con tests.
-- [ ] **T4 — Pedidos.** Listado con estado y total; nuevo pedido (elegir cliente, añadir
+- [x] **T4 — Pedidos.** Listado con estado y total; nuevo pedido (elegir cliente, añadir
   líneas producto + cantidad, ver total) que llama a `crear_pedido`; detalle con sus líneas;
   botones enviar y cancelar. Lógica `orderTotal` y `validateLines` con tests.
 - [ ] **T5 — Panel y acabado.** Panel con nº de productos, productos con stock bajo

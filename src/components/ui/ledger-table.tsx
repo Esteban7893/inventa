@@ -27,6 +27,8 @@ type LedgerTableProps<Row> = {
   empty: ReactNode;
   /** Fila de totales, por clave de columna. */
   footer?: Partial<Record<string, ReactNode>>;
+  /** Regla doble de tinta sobre la fila de totales (el total de un albarán). */
+  doubleRuleFooter?: boolean;
   /** Ancho mínimo en px antes de que la tabla tenga su propio scroll horizontal. */
   minWidth?: number;
 };
@@ -43,6 +45,7 @@ export function LedgerTable<Row>({
   rowKey,
   empty,
   footer,
+  doubleRuleFooter = false,
   minWidth = 560,
 }: LedgerTableProps<Row>) {
   if (rows.length === 0) {
@@ -90,7 +93,7 @@ export function LedgerTable<Row>({
         </tbody>
         {footer && (
           <tfoot>
-            <tr className="border-t-[1.5px] border-ink">
+            <tr className={doubleRuleFooter ? "border-t-4 border-double border-ink" : "border-t-[1.5px] border-ink"}>
               {columns.map((column) => (
                 <td
                   key={column.key}

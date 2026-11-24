@@ -29,6 +29,10 @@ Sé exigente y concreto. Un "parece correcto" no vale: cada directriz se marca c
 4. Busca con `grep` los incumplimientos típicos: `any`, `@ts-ignore`, `console.log`,
    `TODO`, `service_role`, `sb_secret`, claves `eyJ…`, `middleware.ts`.
 
+**Nunca uses las herramientas MCP de Supabase** (`execute_sql`, `list_projects`…): en este
+entorno apuntan a otra cuenta con proyectos ajenos a Inventa. Prueba los datos a través de la
+app con el usuario de prueba.
+
 ## DIRECTRICES
 
 ### Calidad básica (cualquier tarea)
