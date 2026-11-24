@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { assertNoHorizontalOverflow, gotoHydrated, login } from "./helpers";
+import { assertNoHorizontalOverflow, gotoHydrated, login, missingDemoData, readLatestOrder } from "./helpers";
 
 test.describe("Formularios con estado de cliente", () => {
   test("un formulario cancelado tras error de validación sale limpio al volver", async ({ page }) => {
@@ -65,16 +65,13 @@ test.describe("Sin scroll horizontal a 375 px", () => {
       await assertNoHorizontalOverflow(page, route.path);
     }
 
-    await gotoHydrated(page, "/pedidos");
-    await expect(page.getByRole("heading", { level: 1, name: "Pedidos" })).toBeVisible();
+    const latestOrder = await readLatestOrder(page);
+    if (!latestOrder) {
+      throw missingDemoData("hace falta al menos un pedido para comprobar el albarán a 375 px");
+    }
 
-    const firstOrderLink = page.locator("table tbody tr a").first();
-    await expect(firstOrderLink).toBeVisible();
-    const orderHref = await firstOrderLink.getAttribute("href");
-    expect(orderHref, "Hace falta al menos un pedido para comprobar el albarán a 375 px").toBeTruthy();
-
-    await gotoHydrated(page, orderHref ?? "/pedidos");
+    await gotoHydrated(page, latestOrder.href);
     await expect(page.getByRole("heading", { level: 1, name: /Albarán Nº/ })).toBeVisible();
-    await assertNoHorizontalOverflow(page, orderHref ?? "/pedidos/[id]");
+    await assertNoHorizontalOverflow(page, latestOrder.href);
   });
 });
