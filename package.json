@@ -13,6 +13,7 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:db": "node scripts/run-db-tests.mjs",
+    "test:e2e": "playwright test",
     "db:types": "supabase gen types typescript --project-id uqupgywhmmdpjjenxywb > src/lib/database.types.ts"
   },
   "dependencies": {
@@ -25,6 +26,7 @@
     "zod": "^4.6.7"
   },
   "devDependencies": {
+    "@playwright/test": "^1.65.1",
     "@tailwindcss/turbopack": "4.3.3",
     "@types/node": "^22.20.5",
     "@types/react": "^19",

@@ -87,6 +87,8 @@ Orquestador --tarea--> Develop --entrega--> Testing --informe--> Orquestador
 | T7 — Migraciones con historial | [r1](docs/revisiones/T7-r1.md) | APROBADO | |
 | T8 — Tipos generados | [r1](docs/revisiones/T8-r1.md) | APROBADO | |
 | T9 — Tests de base de datos (pgTAP) | [r1](docs/revisiones/T9-r1.md) | APROBADO | |
+| T10 — Tests E2E (Playwright) | [r1](docs/revisiones/T10-r1.md) | SUSPENSO | `actions/upload-artifact@v4` en runtime `node20` en CI (D23) |
+| T10 — Tests E2E (Playwright) | [r2](docs/revisiones/T10-r2.md) | APROBADO | |
 
 ### Fallos que encontró Testing y cómo se corrigieron
 
@@ -167,7 +169,8 @@ Hace falta Node.js 22 o posterior, la CLI de Supabase y un proyecto de Supabase.
    ```
 
    En `.env.local`, pon la URL del proyecto y la clave publicable de Supabase
-   (*Project Settings → API*).
+   (*Project Settings → API*). Si quieres ejecutar los tests E2E con Playwright, añade también
+   `E2E_EMAIL` y `E2E_PASSWORD` con el usuario de pruebas (o pásalas por variable de entorno).
 
 2. **Base de datos.** Enlaza tu proyecto con la CLI de Supabase y aplica las migraciones de
    `supabase/migrations/` para dejar el esquema y el historial sincronizados:
@@ -200,6 +203,7 @@ Hace falta Node.js 22 o posterior, la CLI de Supabase y un proyecto de Supabase.
    npm run typecheck  # tsc --noEmit
    npm test           # Vitest
    npm run test:db    # tests pgTAP en supabase/tests/ (no dejan datos)
+   npm run test:e2e   # tests E2E con Playwright (e2e/)
    npm run build      # build de producción
    npm run db:types   # regenera src/lib/database.types.ts desde el esquema de Supabase
    ```
@@ -209,14 +213,22 @@ Hace falta Node.js 22 o posterior, la CLI de Supabase y un proyecto de Supabase.
    cuando Docker está activo y, si no hay Docker disponible, ejecuta cada archivo con
    `supabase db query --linked -f` validando estrictamente la salida TAP.
 
+   Para los tests E2E de Playwright (`e2e/`), la primera vez instala Chromium con
+   `npx playwright install chromium` y define `E2E_EMAIL` y `E2E_PASSWORD` (en `.env.local` o en
+   el entorno; nunca en el código). Las pruebas comprueban redirección y login, creación y
+   cancelación de pedidos con devolución de stock, rechazo por falta de stock, reinicio de
+   formularios cancelados y ausencia de scroll horizontal a 375 px. Cada test cancela los pedidos
+   que crea para devolver el stock a su valor inicial.
+
 ## Producción
 
 ### Integración continua
 
-Cada pull request y cada push a `main` ejecutan [`.github/workflows/ci.yml`](.github/workflows/ci.yml) en GitHub Actions con dos comprobaciones:
+Cada pull request y cada push a `main` ejecutan [`.github/workflows/ci.yml`](.github/workflows/ci.yml) en GitHub Actions con dos comprobaciones obligatorias y un job E2E opcional:
 
 - **Calidad:** instala dependencias con `npm ci` (Node.js 22 LTS) y ejecuta `npm run lint`, `npm run typecheck`, `npm test` y `npm run build` con valores ficticios para las variables públicas de Supabase.
 - **Secretos:** analiza el historial del PR o del push con Gitleaks (`.gitleaks.toml`) para evitar que entren credenciales en el repositorio.
+- **E2E (Playwright) (opcional):** solo se ejecuta si están configurados en GitHub Secrets `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`, `E2E_EMAIL` y `E2E_PASSWORD`. Si existen, instala Chromium, compila la app con `npm run build` y lanza `npm run test:e2e` contra `npm run start`. Si faltan, el job se omite sin bloquear el PR.
 
 Las actualizaciones de dependencias de `npm` y `github-actions` se revisan cada semana mediante [`.github/dependabot.yml`](.github/dependabot.yml), agrupando las versiones menores y de corrección.
 

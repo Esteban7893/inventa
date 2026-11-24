@@ -41,7 +41,7 @@ Encargo completo, autocontenido, en `docs/tareas/produccion-bloques-1-y-2.md`
   a partir de aquí solo `supabase db push`.
 - [x] **T8 — Tipos generados.** `supabase gen types` → `src/lib/database.types.ts`.
 - [x] **T9 — Tests de base de datos.** pgTAP en `supabase/tests/` (las 27 verificaciones de T2).
-- [ ] **T10 — Tests E2E.** Playwright en `e2e/` con los flujos críticos.
+- [x] **T10 — Tests E2E.** Playwright en `e2e/` con los flujos críticos.
 - [ ] **T11 — Consultas que escalan.** Paginación, agregados del panel en SQL, índices.
 - [ ] **T12 — Cabeceras de seguridad.** HSTS, CSP (primero report-only) y compañía.
 - [ ] **T13 — Pedidos idempotentes.** Clave de idempotencia en `crear_pedido`.
