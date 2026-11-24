@@ -83,6 +83,7 @@ Orquestador --tarea--> Develop --entrega--> Testing --informe--> Orquestador
 | T3 — Productos y clientes | [r2](docs/revisiones/T3-r2.md) | APROBADO | |
 | T4 — Pedidos | [r1](docs/revisiones/T4-r1.md) | APROBADO | |
 | T5 — Panel y acabado | [r1](docs/revisiones/T5-r1.md) | APROBADO | |
+| T6 — Integración continua | [r1](docs/revisiones/T6-r1.md) | APROBADO | |
 
 ### Fallos que encontró Testing y cómo se corrigieron
 
@@ -153,7 +154,7 @@ Decisiones de seguridad:
 
 ## Cómo ejecutarlo en local
 
-Hace falta Node.js 20.9 o posterior y un proyecto de Supabase.
+Hace falta Node.js 22 o posterior y un proyecto de Supabase.
 
 1. **Dependencias y variables de entorno**
 
@@ -186,3 +187,21 @@ Hace falta Node.js 20.9 o posterior y un proyecto de Supabase.
    npm test           # Vitest
    npm run build      # build de producción
    ```
+
+## Producción
+
+### Integración continua
+
+Cada pull request y cada push a `main` ejecutan [`.github/workflows/ci.yml`](.github/workflows/ci.yml) en GitHub Actions con dos comprobaciones:
+
+- **Calidad:** instala dependencias con `npm ci` (Node.js 22 LTS) y ejecuta `npm run lint`, `npm run typecheck`, `npm test` y `npm run build` con valores ficticios para las variables públicas de Supabase.
+- **Secretos:** analiza el historial del PR o del push con Gitleaks (`.gitleaks.toml`) para evitar que entren credenciales en el repositorio.
+
+Las actualizaciones de dependencias de `npm` y `github-actions` se revisan cada semana mediante [`.github/dependabot.yml`](.github/dependabot.yml), agrupando las versiones menores y de corrección.
+
+### Conectar Vercel con GitHub (previews por PR)
+
+Para que Vercel genere una URL de vista previa por cada pull request y despliegue `main` automáticamente:
+
+1. En Vercel, abre *Account Settings → Authentication → Connect GitHub* y autoriza la cuenta de GitHub.
+2. En el proyecto de Inventa en Vercel, abre *Project → Settings → Git*, vincula el repositorio `Esteban7893/inventa` y deja `main` como rama de producción.
