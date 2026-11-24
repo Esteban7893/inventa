@@ -58,6 +58,10 @@ Encargo completo, autocontenido, en `docs/tareas/produccion-bloques-1-y-2.md`
 - **T2b (ronda 1) — alineación en tablas.** Develop señaló que D22 obligaba a alinear a la
   derecha también SKU y fechas. Decisión: D22 precisada — solo importes y cantidades van a la
   derecha; SKU, fechas y referencias siguen en Mono pero pueden ir a la izquierda.
+- **T6 — protección de `main`.** Con la confirmación del humano, `main` queda protegida con
+  `gh api`: PR obligatorio, checks `Calidad` y `Secretos` obligatorios con la rama al día y sin
+  force-push ni borrado. El job `E2E (Playwright)` no es obligatorio porque solo corre si
+  existen los secretos.
 - **T9 — ejecución de pgTAP sin Docker.** `supabase test db --linked` también invoca un
   contenedor Docker (`pg_prove`) y falla en máquinas sin Docker en marcha. Decisión: habilitar
   `pgtap` en el esquema `extensions` mediante migración (`supabase migration new`), escribir los
