@@ -44,7 +44,7 @@ Encargo completo, autocontenido, en `docs/tareas/produccion-bloques-1-y-2.md`
   más acceso de `anon`, aislamiento, reglas y esquema de seguridad: 90 pruebas en 4 archivos).
 - [x] **T10 — Tests E2E.** Playwright en `e2e/` con los flujos críticos.
 - [x] **T11 — Consultas que escalan.** Paginación, agregados del panel en SQL, índices.
-- [ ] **T12 — Cabeceras de seguridad.** HSTS, CSP (primero report-only) y compañía.
+- [x] **T12 — Cabeceras de seguridad.** HSTS, CSP (primero report-only) y compañía.
 - [ ] **T13 — Pedidos idempotentes.** Clave de idempotencia en `crear_pedido`.
 - [ ] **T14 — Movimientos de stock.** Tabla de auditoría alimentada por triggers.
 - [ ] **T15 — Endurecer el acceso.** Ajustes de Auth que hace el humano, documentados.
@@ -135,6 +135,9 @@ Encargo completo, autocontenido, en `docs/tareas/produccion-bloques-1-y-2.md`
   queda en `'self'` o `'none'`, sin `'unsafe-eval'` en producción y sin `'unsafe-inline'` en
   estilos. Se hace en dos pasos dentro de la misma ronda: primero `Content-Security-Policy-Report-Only`
   (commit propio) y, tras recorrer todas las rutas sin violaciones, obligatoria.
+  La SRI experimental (`experimental.sri`) no se usa: solo añade `integrity` a los scripts externos,
+  y los scripts en línea de Next seguirían necesitando `'unsafe-inline'`. En desarrollo la CSP queda
+  en report-only, porque no se ha podido probar el HMR con la política obligatoria.
 - **T9 — ejecución de pgTAP sin Docker.** `supabase test db --linked` también invoca un
   contenedor Docker (`pg_prove`) y falla en máquinas sin Docker en marcha. Decisión: habilitar
   `pgtap` en el esquema `extensions` mediante migración (`supabase migration new`), escribir los
