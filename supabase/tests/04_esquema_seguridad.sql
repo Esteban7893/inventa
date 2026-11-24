@@ -1,7 +1,8 @@
 -- Inventa — tests pgTAP de esquema (D7 y D8). Leen el catálogo y fallan si una migración
 -- futura rompe las reglas: tabla sin RLS o sin owner_id, permisos para anon o PUBLIC,
 -- políticas que no filtran por owner_id, escrituras directas en pedidos, funciones sin
--- search_path fijo o security definer fuera de las tres funciones de pedidos.
+-- search_path fijo o security definer fuera de las tres funciones de pedidos y del trigger
+-- que registra los ajustes de stock (T14).
 -- Las comprobaciones recorren todo el esquema public (no una lista fija), así que también
 -- cubren las tablas y funciones que se añadan después.
 --
@@ -24,16 +25,16 @@ declare
   v_owner_expr constant text := '(owner_id = ( SELECT auth.uid() AS uid))';
   v_tabla text;
 begin
-  return next extensions.plan(23);
+  return next extensions.plan(27);
 
-  -- Las cuatro tablas de Inventa existen (evita que los tests genéricos pasen en vacío).
+  -- Las cinco tablas de Inventa existen (evita que los tests genéricos pasen en vacío).
   return next extensions.is(
     (select count(*)::integer from pg_catalog.pg_class c
      where c.relnamespace = 'public'::regnamespace
        and c.relkind in ('r', 'p')
-       and c.relname in ('productos', 'clientes', 'pedidos', 'pedido_lineas')),
-    4,
-    '01 - existen productos, clientes, pedidos y pedido_lineas en public'
+       and c.relname in ('productos', 'clientes', 'pedidos', 'pedido_lineas', 'movimientos_stock')),
+    5,
+    '01 - existen productos, clientes, pedidos, pedido_lineas y movimientos_stock en public'
   );
 
   -- D7: RLS y owner_id en todas las tablas.
@@ -223,8 +224,8 @@ begin
         and p.prosecdef
         and p.proname <> 'rls_auto_enable'
     $sql$,
-    array['crear_pedido', 'cancelar_pedido', 'enviar_pedido'],
-    '20 - las unicas funciones security definer de Inventa son crear_pedido, cancelar_pedido y enviar_pedido'
+    array['crear_pedido', 'cancelar_pedido', 'enviar_pedido', 'movimientos_stock_registrar_ajuste'],
+    '20 - las unicas funciones security definer de Inventa son crear_pedido, cancelar_pedido, enviar_pedido y el trigger movimientos_stock_registrar_ajuste'
   );
   return next extensions.is_empty(
     $sql$
@@ -241,13 +242,15 @@ begin
       where p.pronamespace = 'public'::regnamespace
         and p.prosecdef
         and p.proname <> 'rls_auto_enable'
+        -- Las de trigger no se llaman desde la API (tests 26 y 27): no tienen sesión que exigir.
+        and p.prorettype <> 'trigger'::regtype
         and (
           p.prosrc not like '%auth.uid()%'
           or p.prosrc not like '%NO_AUTENTICADO%'
           or p.prosrc not like '%owner_id%'
         )
     $sql$,
-    '22 - cada funcion security definer exige auth.uid() (NO_AUTENTICADO) y filtra por owner_id'
+    '22 - cada funcion security definer que no es de trigger exige auth.uid() (NO_AUTENTICADO) y filtra por owner_id'
   );
   return next extensions.is_empty(
     $sql$
@@ -257,6 +260,43 @@ begin
         and pg_catalog.has_function_privilege('authenticated', p.oid, 'EXECUTE')
     $sql$,
     '23 - authenticated no puede ejecutar rls_auto_enable (migracion 0002)'
+  );
+
+  -- T14: movimientos_stock solo se lee; la rellenan triggers.
+  return next extensions.table_privs_are(
+    'public', 'movimientos_stock', 'authenticated',
+    array['SELECT'],
+    '24 - authenticated solo tiene SELECT en movimientos_stock (se escribe solo con triggers)'
+  );
+  return next extensions.set_eq(
+    $sql$
+      select tablename::text, cmd::text from pg_catalog.pg_policies
+      where schemaname = 'public' and tablename = 'movimientos_stock'
+    $sql$,
+    $sql$ values ('movimientos_stock', 'SELECT') $sql$,
+    '25 - movimientos_stock solo tiene politica de select'
+  );
+  -- Funciones de trigger: Postgres no deja llamarlas fuera de un trigger, y además nadie de la
+  -- API tiene execute (anon y PUBLIC ya los cubren 16 y 17). Las security definer escriben
+  -- con el owner_id de la fila que dispara el trigger (new.owner_id).
+  return next extensions.is_empty(
+    $sql$
+      select p.oid::regprocedure::text from pg_catalog.pg_proc p
+      where p.pronamespace = 'public'::regnamespace
+        and p.prorettype = 'trigger'::regtype
+        and pg_catalog.has_function_privilege('authenticated', p.oid, 'EXECUTE')
+    $sql$,
+    '26 - authenticated no puede ejecutar ninguna funcion de trigger de public'
+  );
+  return next extensions.is_empty(
+    $sql$
+      select p.oid::regprocedure::text from pg_catalog.pg_proc p
+      where p.pronamespace = 'public'::regnamespace
+        and p.prosecdef
+        and p.prorettype = 'trigger'::regtype
+        and p.prosrc not like '%new.owner_id%'
+    $sql$,
+    '27 - cada funcion de trigger security definer escribe con el owner_id de la fila (new.owner_id)'
   );
 
   return query select * from extensions.finish();

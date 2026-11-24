@@ -147,6 +147,17 @@ Encargo completo, autocontenido, en `docs/tareas/produccion-bloques-1-y-2.md`
   o una falta de respuesta, para que reintentar sea seguro. Si la persona recarga la página tras
   perder la respuesta, el reenvío lleva otra clave y podría duplicar el pedido; se acepta como límite
   conocido (guardar la clave en el navegador queda como mejora futura).
+- **T14 (ronda 1) — diseño de `movimientos_stock`.** Todo lo registran triggers; `crear_pedido` y
+  `cancelar_pedido` no cambian. El motivo `ajuste` se distingue de los de pedido por `current_user`
+  (dentro de las funciones definer es su dueño), que no se puede cambiar desde la API. Decisiones
+  del orquestador sobre las dudas de Develop: (1) la migración registra un `ajuste` de saldo inicial
+  por cada producto existente, y el alta de un producto con stock registra otro, para que la suma de
+  deltas sea siempre el stock; (2) las claves ajenas a `productos` y `pedidos` son `on delete
+  cascade` (un producto con pedidos sigue sin poder borrarse por `pedido_lineas`, y los pedidos no
+  se borran desde la API); (3) `id` es `bigint` de identidad para fijar el orden dentro de una misma
+  transacción, aceptando que deja intuir el número total de movimientos; la app no lo muestra;
+  (4) en la fase 2 el seed alinea la fecha de los movimientos con la de sus pedidos. Los cambios en
+  `04_esquema_seguridad.sql` hacen que 04 falle hasta que se aplique la migración, como 07.
 - **T9 — ejecución de pgTAP sin Docker.** `supabase test db --linked` también invoca un
   contenedor Docker (`pg_prove`) y falla en máquinas sin Docker en marcha. Decisión: habilitar
   `pgtap` en el esquema `extensions` mediante migración (`supabase migration new`), escribir los
