@@ -89,6 +89,7 @@ Orquestador --tarea--> Develop --entrega--> Testing --informe--> Orquestador
 | T7 — Migraciones con historial | [r1](docs/revisiones/T7-r1.md) | APROBADO | |
 | T7 — Migraciones con historial | [r2](docs/revisiones/T7-r2.md) | APROBADO | |
 | T8 — Tipos generados | [r1](docs/revisiones/T8-r1.md) | APROBADO | |
+| T8 — Tipos generados | [r2](docs/revisiones/T8-r2.md) | APROBADO | |
 | T9 — Tests de base de datos (pgTAP) | [r1](docs/revisiones/T9-r1.md) | APROBADO | |
 | T10 — Tests E2E (Playwright) | [r1](docs/revisiones/T10-r1.md) | SUSPENSO | `actions/upload-artifact@v4` en runtime `node20` en CI (D23) |
 | T10 — Tests E2E (Playwright) | [r2](docs/revisiones/T10-r2.md) | APROBADO | |
@@ -236,6 +237,20 @@ Hace falta Node.js 22 o posterior, la CLI de Supabase y un proyecto de Supabase.
    npm run build      # build de producción
    npm run db:types   # regenera src/lib/database.types.ts desde el esquema de Supabase
    ```
+
+   `npm run db:types` (`scripts/db-types.mjs`) solo lee el esquema con
+   `supabase gen types typescript` y necesita la sesión de la CLI (`supabase login`). Por
+   defecto lee el proyecto de producción (`uqupgywhmmdpjjenxywb`); para tu propio proyecto,
+   pasa su ref en la variable `SUPABASE_PROJECT_REF` (no se lee de `.env.local`):
+
+   ```bash
+   SUPABASE_PROJECT_REF=<ref-de-tu-proyecto> npm run db:types
+   ```
+
+   Si la CLI falla (sin sesión, ref equivocado, sin red), el archivo de tipos se queda como
+   estaba. El código no escribe a mano tipos de filas: `src/lib/types.ts` los deriva de
+   `Database` (`Tables<"productos">`…) y solo estrecha lo que Postgres no expresa, como
+   `estado` (texto con `check`) y `p_lineas` (`jsonb`).
 
    Los tests de base de datos viven en `supabase/tests/` (formato pgTAP envuelto en `begin; ... rollback;`,
    por lo que no dejan filas en ninguna tabla). `npm run test:db` ejecuta `supabase test db --linked`

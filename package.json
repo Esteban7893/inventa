@@ -14,7 +14,7 @@
     "test": "vitest run",
     "test:db": "node scripts/run-db-tests.mjs",
     "test:e2e": "playwright test",
-    "db:types": "supabase gen types typescript --project-id uqupgywhmmdpjjenxywb > src/lib/database.types.ts"
+    "db:types": "node scripts/db-types.mjs"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.7",

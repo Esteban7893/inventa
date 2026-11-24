@@ -1,4 +1,4 @@
-import type { CreateOrderLine, OrderStatus } from "@/lib/types";
+import type { CreateOrderLine, OrderLine, OrderStatus } from "@/lib/types";
 
 /** Cantidad máxima de una línea (el stock nunca pasa de 1.000.000.000, así que nunca alcanza). */
 export const MAX_LINE_QUANTITY = 1_000_000_000;
@@ -7,16 +7,10 @@ const WHOLE_NUMBER = /^\d+$/;
 const REFERENCE_LENGTH = 8;
 
 /** Línea con su precio: el guardado en `pedido_lineas` o, en el formulario, el del catálogo. */
-export type PricedLine = {
-  cantidad: number;
-  precio_unit_cents: number;
-};
+export type PricedLine = Pick<OrderLine, "cantidad" | "precio_unit_cents">;
 
 /** Línea tal como la va escribiendo la persona: el producto puede faltar ("") y la cantidad ser NaN. */
-export type DraftLine = {
-  producto_id: string;
-  cantidad: number;
-};
+export type DraftLine = Pick<OrderLine, "producto_id" | "cantidad">;
 
 /** Errores de una línea, junto a cada campo. */
 export type LineErrors = {

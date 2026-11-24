@@ -74,6 +74,12 @@ Encargo completo, autocontenido, en `docs/tareas/produccion-bloques-1-y-2.md`
   el orquestador la aplica con `supabase db push` cuando Testing ha aprobado la tarea y antes de
   fusionar el PR, y por eso cada migración tiene que ser compatible con el código de `main`.
   `develop.md` se actualiza con esta regla y con el nombre real de los archivos (`<fecha>_nombre.sql`).
+- **T8 (ronda 2) — `db:types` y variables.** `npm run db:types` pasa a
+  `node scripts/db-types.mjs`: por defecto hace lo mismo que el comando del encargo, pero admite
+  otro proyecto con `SUPABASE_PROJECT_REF` y no vacía `database.types.ts` si la CLI falla. D6 se
+  interpreta así: la app solo lee las dos variables `NEXT_PUBLIC_*`; `SUPABASE_PROJECT_REF` no es
+  un secreto y solo la usa esa herramienta. Los `| null` defensivos de los objetos anidados de las
+  páginas se quedan como están (quitarlos cambia la interfaz y no es parte de T8).
 - **T9 — ejecución de pgTAP sin Docker.** `supabase test db --linked` también invoca un
   contenedor Docker (`pg_prove`) y falla en máquinas sin Docker en marcha. Decisión: habilitar
   `pgtap` en el esquema `extensions` mediante migración (`supabase migration new`), escribir los
