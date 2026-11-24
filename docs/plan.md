@@ -158,6 +158,17 @@ Encargo completo, autocontenido, en `docs/tareas/produccion-bloques-1-y-2.md`
   transacción, aceptando que deja intuir el número total de movimientos; la app no lo muestra;
   (4) en la fase 2 el seed alinea la fecha de los movimientos con la de sus pedidos. Los cambios en
   `04_esquema_seguridad.sql` hacen que 04 falle hasta que se aplique la migración, como 07.
+- **T14 — migración aplicada.** Tras el APROBADO de la ronda 1 (solo base de datos), el orquestador
+  aplicó `20261124201320_movimientos_stock.sql` con `supabase db push` (saldo inicial: 10 `ajuste`
+  que suman 151, el stock total) y regeneró `database.types.ts`. Advisors: el aviso INFO
+  `unindexed_foreign_keys` de `movimientos_stock_pedido_fkey (pedido_id, owner_id)` vuelve a Develop:
+  en la fase 2 añade una migración nueva que solo cree ese índice. Los `unused_index` son los índices
+  nuevos, que la fase 2 empieza a usar. **Excepción a D8:** `movimientos_stock_registrar_ajuste` es
+  `security definer` sin comprobar `auth.uid()`, porque D7 impide escribir la tabla desde la API; es
+  una función de trigger que nadie de la API puede ejecutar y que escribe con `new.owner_id` (04#20,
+  #22, #26 y #27 lo comprueban). **Límite conocido:** un cambio de stock hecho como `postgres` fuera
+  de las funciones (editor de Supabase, SQL a mano) no deja movimiento; cualquier función `security
+  definer` nueva que cambie el stock tiene que registrar el suyo.
 - **T9 — ejecución de pgTAP sin Docker.** `supabase test db --linked` también invoca un
   contenedor Docker (`pg_prove`) y falla en máquinas sin Docker en marcha. Decisión: habilitar
   `pgtap` en el esquema `extensions` mediante migración (`supabase migration new`), escribir los

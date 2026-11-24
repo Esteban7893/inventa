@@ -41,6 +41,51 @@ export type Database = {
         }
         Relationships: []
       }
+      movimientos_stock: {
+        Row: {
+          created_at: string
+          delta: number
+          id: number
+          motivo: string
+          owner_id: string
+          pedido_id: string | null
+          producto_id: string
+        }
+        Insert: {
+          created_at?: string
+          delta: number
+          id?: never
+          motivo: string
+          owner_id?: string
+          pedido_id?: string | null
+          producto_id: string
+        }
+        Update: {
+          created_at?: string
+          delta?: number
+          id?: never
+          motivo?: string
+          owner_id?: string
+          pedido_id?: string | null
+          producto_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "movimientos_stock_pedido_fkey"
+            columns: ["pedido_id", "owner_id"]
+            isOneToOne: false
+            referencedRelation: "pedidos"
+            referencedColumns: ["id", "owner_id"]
+          },
+          {
+            foreignKeyName: "movimientos_stock_producto_fkey"
+            columns: ["producto_id", "owner_id"]
+            isOneToOne: false
+            referencedRelation: "productos"
+            referencedColumns: ["id", "owner_id"]
+          },
+        ]
+      }
       pedido_lineas: {
         Row: {
           cantidad: number
