@@ -2,8 +2,11 @@ import { describe, expect, it } from "vitest";
 import {
   containsPattern,
   firstParam,
+  isPageOutOfRange,
+  LIST_PAGE_SIZE,
   listHref,
   MAX_PAGE,
+  PAGE_OUT_OF_RANGE_CODE,
   pageCount,
   pageRange,
   parsePage,
@@ -91,6 +94,57 @@ describe("pageRange y pageCount", () => {
     expect(() => pageCount(-1, 50)).toThrow(RangeError);
     expect(() => pageCount(2.5, 50)).toThrow(RangeError);
     expect(() => pageCount(10, 0)).toThrow(RangeError);
+  });
+});
+
+describe("isPageOutOfRange", () => {
+  it("sin filas, la página 1 existe (es el estado vacío) y las demás no", () => {
+    expect(isPageOutOfRange({ page: 1, total: 0, size: 20 })).toBe(false);
+    expect(isPageOutOfRange({ page: 2, total: 0, size: 20 })).toBe(true);
+    expect(isPageOutOfRange({ page: 1, total: null, size: 20 })).toBe(false);
+  });
+
+  it("con un total múltiplo exacto del tamaño, la página siguiente a la última no existe", () => {
+    expect(isPageOutOfRange({ page: 1, total: 20, size: 20 })).toBe(false);
+    expect(isPageOutOfRange({ page: 2, total: 20, size: 20 })).toBe(true);
+    expect(isPageOutOfRange({ page: 2, total: 40, size: 20 })).toBe(false);
+    expect(isPageOutOfRange({ page: 3, total: 40, size: 20 })).toBe(true);
+  });
+
+  it("la última página incompleta existe y la siguiente no", () => {
+    expect(isPageOutOfRange({ page: 2, total: 21, size: 20 })).toBe(false);
+    expect(isPageOutOfRange({ page: 3, total: 21, size: 20 })).toBe(true);
+    expect(isPageOutOfRange({ page: 1, total: 1, size: 20 })).toBe(false);
+  });
+
+  it("una página muy grande no existe", () => {
+    expect(isPageOutOfRange({ page: MAX_PAGE, total: 21, size: 20 })).toBe(true);
+    expect(isPageOutOfRange({ page: Number.MAX_SAFE_INTEGER, total: 21, size: 20 })).toBe(true);
+    expect(isPageOutOfRange({ page: MAX_PAGE, total: MAX_PAGE * 20, size: 20 })).toBe(false);
+  });
+
+  it("el error de PostgREST de página fuera de rango siempre la deja fuera, aunque falte el total", () => {
+    expect(PAGE_OUT_OF_RANGE_CODE).toBe("PGRST103");
+    expect(isPageOutOfRange({ page: 2, total: 21, size: 20, errorCode: PAGE_OUT_OF_RANGE_CODE })).toBe(true);
+    expect(isPageOutOfRange({ page: 3, total: null, size: 20, errorCode: PAGE_OUT_OF_RANGE_CODE })).toBe(true);
+    expect(isPageOutOfRange({ page: 2, total: 0, size: 20, errorCode: PAGE_OUT_OF_RANGE_CODE })).toBe(true);
+    expect(isPageOutOfRange({ page: 2, total: 21, size: 20, errorCode: null })).toBe(false);
+    expect(isPageOutOfRange({ page: 2, total: 21, size: 20, errorCode: "42501" })).toBe(false);
+  });
+
+  it("usa el tamaño de los listados si no se indica", () => {
+    expect(isPageOutOfRange({ page: 2, total: LIST_PAGE_SIZE })).toBe(true);
+    expect(isPageOutOfRange({ page: 2, total: LIST_PAGE_SIZE + 1 })).toBe(false);
+  });
+
+  it("rechaza páginas, totales o tamaños que no son enteros válidos", () => {
+    expect(() => isPageOutOfRange({ page: 0, total: 10, size: 20 })).toThrow(RangeError);
+    expect(() => isPageOutOfRange({ page: -1, total: 10, size: 20 })).toThrow(RangeError);
+    expect(() => isPageOutOfRange({ page: 1.5, total: 10, size: 20 })).toThrow(RangeError);
+    expect(() => isPageOutOfRange({ page: Number.NaN, total: 10, size: 20 })).toThrow(RangeError);
+    expect(() => isPageOutOfRange({ page: 1, total: -1, size: 20 })).toThrow(RangeError);
+    expect(() => isPageOutOfRange({ page: 1, total: 2.5, size: 20 })).toThrow(RangeError);
+    expect(() => isPageOutOfRange({ page: 1, total: 10, size: 0 })).toThrow(RangeError);
   });
 });
 

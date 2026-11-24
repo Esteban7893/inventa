@@ -1,5 +1,6 @@
 /**
- * Listados paginados (productos, clientes): lectura de `searchParams`, páginas y búsqueda.
+ * Listados paginados (productos, clientes y movimientos de un producto): lectura de
+ * `searchParams`, páginas y búsqueda.
  * Nada de esto toca Supabase: las páginas lo usan para construir la consulta y los enlaces.
  */
 
@@ -59,6 +60,34 @@ export function pageCount(total: number, size: number = LIST_PAGE_SIZE): number 
     throw new RangeError("El total tiene que ser un entero igual o mayor que cero.");
   }
   return Math.max(1, Math.ceil(total / size));
+}
+
+/** Código de PostgREST cuando el desplazamiento pedido es mayor que el total de filas. */
+export const PAGE_OUT_OF_RANGE_CODE = "PGRST103";
+
+type PageOutOfRangeInput = {
+  /** Página pedida en la URL (ya validada con `parsePage`). */
+  page: number;
+  /** Total de filas (`count`). Es `null` cuando PostgREST responde con error. */
+  total: number | null;
+  size?: number;
+  /** Código del error de la consulta de la página, si lo hubo. */
+  errorCode?: string | null;
+};
+
+/**
+ * Si la página pedida está más allá de la última y el listado tiene que decir «Esta página no
+ * existe» en lugar de su estado vacío. PostgREST solo da `PGRST103` cuando el desplazamiento
+ * es *mayor* que el total; si es igual (total múltiplo exacto del tamaño y la página
+ * siguiente a la última) responde con 0 filas, y eso también es una página que no existe.
+ * Sin filas, la página 1 sí existe: es el estado vacío.
+ */
+export function isPageOutOfRange({ page, total, size = LIST_PAGE_SIZE, errorCode = null }: PageOutOfRangeInput): boolean {
+  if (!Number.isSafeInteger(page) || page < 1) {
+    throw new RangeError("La página tiene que ser un entero mayor que cero.");
+  }
+  const pages = pageCount(total ?? 0, size);
+  return errorCode === PAGE_OUT_OF_RANGE_CODE || page > pages;
 }
 
 /**

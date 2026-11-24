@@ -8,7 +8,16 @@ import { LedgerTable, type LedgerColumn } from "@/components/ui/ledger-table";
 import { PageHeader } from "@/components/ui/page-header";
 import { Pagination } from "@/components/ui/pagination";
 import { requireUser } from "@/lib/auth";
-import { listHref, pageCount, pageRange, parsePage, parseSearch, searchFilter } from "@/lib/domain/listing";
+import {
+  PAGE_OUT_OF_RANGE_CODE,
+  isPageOutOfRange,
+  listHref,
+  pageCount,
+  pageRange,
+  parsePage,
+  parseSearch,
+  searchFilter,
+} from "@/lib/domain/listing";
 import { createClient } from "@/lib/supabase/server";
 import type { Customer } from "@/lib/types";
 
@@ -56,9 +65,6 @@ const COLUMNS: ReadonlyArray<LedgerColumn<CustomerRow>> = [
   },
 ];
 
-/** PostgREST responde así cuando la página pedida está más allá de la última. */
-const PAGE_OUT_OF_RANGE = "PGRST103";
-
 function plural(count: number, one: string, many: string): string {
   return `${count} ${count === 1 ? one : many}`;
 }
@@ -90,8 +96,7 @@ export default async function ClientesPage({
     supabase.from("clientes").select("id", { count: "exact", head: true }),
   ]);
 
-  const outOfRange = result.error?.code === PAGE_OUT_OF_RANGE;
-  if ((result.error && !outOfRange) || totalResult.error) {
+  if ((result.error && result.error.code !== PAGE_OUT_OF_RANGE_CODE) || totalResult.error) {
     throw new Error("No se han podido cargar los clientes.");
   }
 
@@ -99,6 +104,8 @@ export default async function ClientesPage({
   const allCustomers = totalResult.count ?? 0;
   const matching = result.count ?? 0;
   const pages = pageCount(matching);
+  // Más allá de la última página, también cuando el total es múltiplo exacto del tamaño.
+  const outOfRange = isPageOutOfRange({ page, total: result.count, errorCode: result.error?.code });
   const hrefFor = (target: number) => listHref("/clientes", { q: query, pagina: target });
 
   return (

@@ -4,7 +4,7 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { LedgerTable, type LedgerColumn } from "@/components/ui/ledger-table";
 import { Pagination } from "@/components/ui/pagination";
 import { formatDate, formatTime } from "@/lib/domain/dates";
-import { listHref, pageCount, pageRange } from "@/lib/domain/listing";
+import { PAGE_OUT_OF_RANGE_CODE, isPageOutOfRange, listHref, pageCount, pageRange } from "@/lib/domain/listing";
 import { orderReference } from "@/lib/domain/order";
 import {
   MOVEMENT_PAGE_SIZE,
@@ -16,9 +16,6 @@ import { createClient } from "@/lib/supabase/server";
 import type { StockMovement } from "@/lib/types";
 
 type MovementRow = Pick<StockMovement, "id" | "created_at" | "delta" | "motivo" | "pedido_id">;
-
-/** PostgREST responde así cuando la página pedida está más allá de la última. */
-const PAGE_OUT_OF_RANGE = "PGRST103";
 
 /** Ancla de la sección: los enlaces de página vuelven a ella y no al principio de la ficha. */
 const SECTION_ID = "movimientos";
@@ -92,8 +89,7 @@ export async function StockMovements({ productId, page }: Props) {
     .order("id", { ascending: false })
     .range(from, to);
 
-  const outOfRange = error?.code === PAGE_OUT_OF_RANGE;
-  if (error && !outOfRange) {
+  if (error && error.code !== PAGE_OUT_OF_RANGE_CODE) {
     throw new Error("No se han podido cargar los movimientos del producto.");
   }
 
@@ -103,6 +99,9 @@ export async function StockMovements({ productId, page }: Props) {
   }));
   const total = count ?? 0;
   const pages = pageCount(total, MOVEMENT_PAGE_SIZE);
+  // Más allá de la última página (con `PGRST103` o con 0 filas cuando el total es múltiplo
+  // exacto del tamaño): nunca «Aún no hay movimientos» de un producto que los tiene.
+  const outOfRange = isPageOutOfRange({ page, total: count, size: MOVEMENT_PAGE_SIZE, errorCode: error?.code });
   const hrefFor = (target: number) => `${listHref(`/productos/${productId}`, { pagina: target })}#${SECTION_ID}`;
 
   return (
@@ -111,7 +110,7 @@ export async function StockMovements({ productId, page }: Props) {
         <h2 id={`${SECTION_ID}-titulo`} className="letterhead text-ink">
           Movimientos
         </h2>
-        {total > 0 && (
+        {total > 0 && !outOfRange && (
           <p className="letterhead figures text-ink-soft">{plural(total, "movimiento", "movimientos")}</p>
         )}
       </div>
