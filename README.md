@@ -52,6 +52,17 @@ la misma sesión y Claude Code solo los registra con nombre propio al empezar un
 Cada encargo concreto del orquestador añadía el texto de la tarea y, en las rondas de
 corrección, el informe completo de Testing.
 
+**T6–T10 (producción): primera versión hecha fuera del equipo.** Después de T1–T5 se encargó
+llevar la app a estándares de producción ([`docs/tareas/produccion-bloques-1-y-2.md`](docs/tareas/produccion-bloques-1-y-2.md)).
+La primera versión de T6–T10 (sus informes r1, y r2 en T10) la hizo otro agente, Gemini en
+Antigravity, que hizo a la vez los tres papeles, sin subagentes. Como esta prueba pide el equipo
+de Claude Code, el orquestador volvió a pasar las cinco tareas por el bucle sobre ese código:
+Develop las retomó y rehízo lo que no cumplía, y un Testing nuevo las revisó en rondas nuevas.
+Esas rondas encontraron, entre otras cosas, que el escaneo de secretos de CI analizaba 0 commits
+en los push a `main`, que el informe de Playwright de CI habría publicado la contraseña del
+usuario E2E y que varios tests pgTAP podían pasar en falso. Los informes de la primera versión
+se conservan tal cual; la decisión está en [`docs/plan.md`](docs/plan.md).
+
 ### El bucle
 
 ```
@@ -83,18 +94,18 @@ Orquestador --tarea--> Develop --entrega--> Testing --informe--> Orquestador
 | T3 — Productos y clientes | [r2](docs/revisiones/T3-r2.md) | APROBADO | |
 | T4 — Pedidos | [r1](docs/revisiones/T4-r1.md) | APROBADO | |
 | T5 — Panel y acabado | [r1](docs/revisiones/T5-r1.md) | APROBADO | |
-| T6 — Integración continua | [r1](docs/revisiones/T6-r1.md) | APROBADO | |
+| T6 — Integración continua | [r1](docs/revisiones/T6-r1.md) | APROBADO | Primera versión, hecha fuera del equipo (ver arriba) |
 | T6 — Integración continua | [r2](docs/revisiones/T6-r2.md) | SUSPENSO | Lista del README partida por el párrafo de protección de `main` (D23) |
 | T6 — Integración continua | [r3](docs/revisiones/T6-r3.md) | APROBADO | |
-| T7 — Migraciones con historial | [r1](docs/revisiones/T7-r1.md) | APROBADO | |
+| T7 — Migraciones con historial | [r1](docs/revisiones/T7-r1.md) | APROBADO | Primera versión, hecha fuera del equipo (ver arriba) |
 | T7 — Migraciones con historial | [r2](docs/revisiones/T7-r2.md) | APROBADO | |
-| T8 — Tipos generados | [r1](docs/revisiones/T8-r1.md) | APROBADO | |
+| T8 — Tipos generados | [r1](docs/revisiones/T8-r1.md) | APROBADO | Primera versión, hecha fuera del equipo (ver arriba) |
 | T8 — Tipos generados | [r2](docs/revisiones/T8-r2.md) | APROBADO | |
-| T9 — Tests de base de datos (pgTAP) | [r1](docs/revisiones/T9-r1.md) | APROBADO | |
+| T9 — Tests de base de datos (pgTAP) | [r1](docs/revisiones/T9-r1.md) | APROBADO | Primera versión, hecha fuera del equipo (ver arriba) |
 | T9 — Tests de base de datos (pgTAP) | [r2](docs/revisiones/T9-r2.md) | SUSPENSO | Tests que podían pasar en falso (UPDATE de `anon`, cambio de rol sin comprobar) y guarda de transacciones incompleta (D26) |
 | T9 — Tests de base de datos (pgTAP) | [r3](docs/revisiones/T9-r3.md) | APROBADO | |
-| T10 — Tests E2E (Playwright) | [r1](docs/revisiones/T10-r1.md) | SUSPENSO | `actions/upload-artifact@v4` en runtime `node20` en CI (D23) |
-| T10 — Tests E2E (Playwright) | [r2](docs/revisiones/T10-r2.md) | APROBADO | |
+| T10 — Tests E2E (Playwright) | [r1](docs/revisiones/T10-r1.md) | SUSPENSO | Primera versión, hecha fuera del equipo: `actions/upload-artifact@v4` en runtime `node20` en CI (D23) |
+| T10 — Tests E2E (Playwright) | [r2](docs/revisiones/T10-r2.md) | APROBADO | Primera versión, hecha fuera del equipo (ver arriba) |
 | T10 — Tests E2E (Playwright) | [r3](docs/revisiones/T10-r3.md) | APROBADO | |
 
 ### Fallos que encontró Testing y cómo se corrigieron
