@@ -105,7 +105,7 @@ Encargo completo, autocontenido, en `docs/tareas/produccion-bloques-1-y-2.md`
   (`20261124114049_consultas_escalables.sql` y `02_consultas_y_permisos.sql`). Develop lo usa solo
   como referencia: la migración y los tests de T11 son nuevos y pasan por el bucle completo.
 - **T11 (ronda 1) — colación de `nombre`.** Para paginar productos y clientes en SQL sin cambiar
-  el orden que ve hoy el usuario (`Intl.Collator("es", { numeric: true })`: «nata, Nube, Ñandú»,
+  el orden que ve hoy el usuario (`Intl.Collator("es", { sensitivity: "base", numeric: true })`: «nata, Nube, Ñandú»,
   «Item 2, Item 10»), la migración crea la colación ICU `public.es_natural` y la pone en
   `productos.nombre` y `clientes.nombre`. Es el único cambio de T11 que no se limita a añadir; se
   acepta porque la colación es determinista (la igualdad sigue siendo byte a byte), `ilike` sigue
