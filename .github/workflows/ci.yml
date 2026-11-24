@@ -80,6 +80,7 @@ jobs:
   e2e-config:
     name: Comprobar configuración E2E
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     outputs:
       enabled: ${{ steps.check.outputs.enabled }}
     steps:
@@ -102,9 +103,12 @@ jobs:
     needs: [calidad, e2e-config]
     if: needs.e2e-config.outputs.enabled == 'true'
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - name: Checkout
         uses: actions/checkout@v7
+        with:
+          persist-credentials: false
 
       - name: Configurar Node.js
         uses: actions/setup-node@v7

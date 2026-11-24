@@ -228,9 +228,9 @@ Cada pull request y cada push a `main` ejecutan [`.github/workflows/ci.yml`](.gi
 
 - **Calidad:** instala dependencias con `npm ci` (Node.js 22 LTS) y ejecuta `npm run lint` (falla también con avisos), `npm run typecheck`, `npm test` y `npm run build` con valores ficticios para las variables públicas de Supabase.
 - **Secretos:** escanea **todo el historial** de git con la CLI de Gitleaks (versión fijada y comprobada por SHA-256 en el workflow; reglas por defecto más `.gitleaks.toml`) para evitar que entren credenciales en el repositorio. Para actualizar Gitleaks se cambian a mano `GITLEAKS_VERSION` y `GITLEAKS_SHA256` en `ci.yml`.
-
-`main` está protegida: solo se cambia mediante pull request, con los checks `Calidad` y `Secretos` en verde y la rama al día, y sin force-push. El job E2E no es obligatorio porque solo corre si existen sus secretos.
 - **E2E (Playwright) (opcional):** solo se ejecuta si están configurados en GitHub Secrets `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`, `E2E_EMAIL` y `E2E_PASSWORD`. Si existen, instala Chromium, compila la app con `npm run build` y lanza `npm run test:e2e` contra `npm run start`. Si faltan, el job se omite sin bloquear el PR.
+
+`main` está protegida en GitHub: para los cambios normales el pull request es obligatorio, con los checks `Calidad` y `Secretos` en verde y la rama al día, y no se admiten force-push ni borrar la rama. La protección no se aplica a los administradores del repositorio (`enforce_admins` desactivado), que podrían saltársela. El job E2E no es un check obligatorio porque solo corre si existen sus secretos.
 
 Las actualizaciones de dependencias de `npm` y `github-actions` se revisan cada semana mediante [`.github/dependabot.yml`](.github/dependabot.yml), agrupando las versiones menores y de corrección. Las versiones mayores llegan en PR separados para revisarlas una a una, salvo las de `@types/node`, que se ignoran porque siguen la versión de Node del proyecto (22).
 
