@@ -35,7 +35,7 @@ la aprueba (informes en `docs/revisiones/`).
 Encargo completo, autocontenido, en `docs/tareas/produccion-bloques-1-y-2.md`
 (directrices D23–D30 en `testing.md`). Bloque 1 primero.
 
-- [ ] **T6 — Integración continua.** GitHub Actions (lint, tipos, tests, build, gitleaks),
+- [x] **T6 — Integración continua.** GitHub Actions (lint, tipos, tests, build, gitleaks),
   Dependabot, `main` protegida (con confirmación del humano).
 - [ ] **T7 — Migraciones con historial.** `supabase link` + `migration repair` de 0001/0002;
   a partir de aquí solo `supabase db push`.

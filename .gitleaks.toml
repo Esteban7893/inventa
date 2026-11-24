@@ -1,0 +1,10 @@
+title = "Inventa gitleaks config"
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Valores ficticios de ejemplo para build en CI y plantilla .env.example"
+regexes = [
+  '''^sb_publishable_(example|tu_clave)$''',
+]
