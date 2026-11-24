@@ -51,6 +51,7 @@ async function saveProduct(id: string | null, formData: FormData): Promise<Produ
   }
 
   revalidatePath("/productos");
+  revalidatePath("/panel");
   redirect("/productos");
 }
 
@@ -96,5 +97,6 @@ export async function deleteProduct(id: string): Promise<ActionResult> {
   }
 
   revalidatePath("/productos");
+  revalidatePath("/panel");
   redirect("/productos");
 }

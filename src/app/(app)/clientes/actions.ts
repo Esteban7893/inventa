@@ -46,6 +46,7 @@ async function saveCustomer(id: string | null, formData: FormData): Promise<Cust
   }
 
   revalidatePath("/clientes");
+  revalidatePath("/panel");
   redirect("/clientes");
 }
 
@@ -91,5 +92,6 @@ export async function deleteCustomer(id: string): Promise<ActionResult> {
   }
 
   revalidatePath("/clientes");
+  revalidatePath("/panel");
   redirect("/clientes");
 }

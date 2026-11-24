@@ -18,8 +18,9 @@ const SESSION_EXPIRED = "Tu sesión ha caducado. Vuelve a entrar.";
 const NOT_FOUND = "El pedido no existe o ya no está disponible.";
 const GENERIC = "No se ha podido completar la operación. Inténtalo de nuevo.";
 
-/** Lo que cambia al crear o cancelar un pedido: pedidos, su albarán y el stock de los productos. */
+/** Lo que cambia al crear o cancelar un pedido: pedidos, su albarán, el stock de los productos y el panel. */
 function revalidateOrders(orderId: string) {
+  revalidatePath("/panel");
   revalidatePath("/pedidos");
   revalidatePath("/pedidos/nuevo");
   revalidatePath(`/pedidos/${orderId}`);

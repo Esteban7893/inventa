@@ -1,5 +1,5 @@
 /** Las fechas se muestran siempre en la hora de Madrid, sea cual sea la zona del servidor. */
-const TIME_ZONE = "Europe/Madrid";
+export const TIME_ZONE = "Europe/Madrid";
 
 const dateFormatter = new Intl.DateTimeFormat("es-ES", {
   day: "2-digit",
@@ -18,7 +18,8 @@ const dateTimeFormatter = new Intl.DateTimeFormat("es-ES", {
   timeZone: TIME_ZONE,
 });
 
-function toDate(iso: string): Date {
+/** Lee un texto ISO 8601. Lanza `RangeError` si está vacío o no es una fecha. */
+export function parseIsoDate(iso: string): Date {
   const date = new Date(iso);
   if (iso.trim() === "" || Number.isNaN(date.getTime())) {
     throw new RangeError("La fecha no es válida.");
@@ -28,10 +29,10 @@ function toDate(iso: string): Date {
 
 /** Fecha de un texto ISO 8601, p. ej. "2026-11-24T10:30:00Z" → "24/11/2026". */
 export function formatDate(iso: string): string {
-  return dateFormatter.format(toDate(iso));
+  return dateFormatter.format(parseIsoDate(iso));
 }
 
 /** Fecha y hora de un texto ISO 8601, p. ej. "2026-11-24T10:30:00Z" → "24/11/2026, 11:30". */
 export function formatDateTime(iso: string): string {
-  return dateTimeFormatter.format(toDate(iso));
+  return dateTimeFormatter.format(parseIsoDate(iso));
 }

@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
+import { cache } from "react";
 import { z } from "zod";
 import { deleteCustomer, updateCustomer } from "@/app/(app)/clientes/actions";
 import { CustomerForm } from "@/app/(app)/clientes/customer-form";
@@ -9,16 +10,16 @@ import { requireUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import type { Customer } from "@/lib/types";
 
-export const metadata: Metadata = {
-  title: "Editar cliente",
-};
-
 type CustomerDetail = Pick<Customer, "id" | "nombre" | "email" | "telefono">;
 
-export default async function EditarClientePage({ params }: { params: Promise<{ id: string }> }) {
-  await requireUser();
-  const { id } = await params;
+type Props = { params: Promise<{ id: string }> };
 
+/**
+ * Carga el cliente o lanza `notFound()`. Con `cache`, el título de la pestaña y la página
+ * comparten una sola consulta; si no existe, la pestaña también lleva el título del 404.
+ */
+const loadCustomer = cache(async (id: string): Promise<CustomerDetail> => {
+  await requireUser();
   if (!z.uuid().safeParse(id).success) {
     notFound();
   }
@@ -36,6 +37,16 @@ export default async function EditarClientePage({ params }: { params: Promise<{ 
   if (!customer) {
     notFound();
   }
+  return customer;
+});
+
+export async function generateMetadata({ params }: Props): Promise<Metadata> {
+  const customer = await loadCustomer((await params).id);
+  return { title: customer.nombre };
+}
+
+export default async function EditarClientePage({ params }: Props) {
+  const customer = await loadCustomer((await params).id);
 
   // El formulario se vuelve a montar (key) si cambian los datos guardados: Next conserva
   // oculta la página ya visitada, con lo que se tecleó, y al volver mostraría valores viejos.

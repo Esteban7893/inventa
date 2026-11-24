@@ -26,7 +26,7 @@ la aprueba (informes en `docs/revisiones/`).
 - [x] **T4 — Pedidos.** Listado con estado y total; nuevo pedido (elegir cliente, añadir
   líneas producto + cantidad, ver total) que llama a `crear_pedido`; detalle con sus líneas;
   botones enviar y cancelar. Lógica `orderTotal` y `validateLines` con tests.
-- [ ] **T5 — Panel y acabado.** Panel con nº de productos, productos con stock bajo
+- [x] **T5 — Panel y acabado.** Panel con nº de productos, productos con stock bajo
   (lista), pedidos del mes e ingresos del mes (pedidos no cancelados). Repaso de estados
   vacíos, móvil y textos. README con cómo se trabajó con los agentes.
 

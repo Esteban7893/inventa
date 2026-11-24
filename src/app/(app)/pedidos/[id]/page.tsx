@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import type { ReactNode } from "react";
+import { cache, type ReactNode } from "react";
 import { z } from "zod";
 import { cancelOrder, shipOrder } from "@/app/(app)/pedidos/actions";
 import { OrderActions } from "@/app/(app)/pedidos/order-actions";
@@ -15,10 +15,6 @@ import { formatCents } from "@/lib/domain/money";
 import { lineSubtotal, orderReference } from "@/lib/domain/order";
 import { createClient } from "@/lib/supabase/server";
 import type { Customer, Order, OrderLine, Product } from "@/lib/types";
-
-export const metadata: Metadata = {
-  title: "Albarán",
-};
 
 type LineRow = Pick<OrderLine, "id" | "cantidad" | "precio_unit_cents"> & {
   productos: Pick<Product, "nombre" | "sku"> | null;
@@ -73,10 +69,14 @@ function Entry({ term, children }: { term: string; children: ReactNode }) {
   );
 }
 
-export default async function PedidoPage({ params }: { params: Promise<{ id: string }> }) {
-  await requireUser();
-  const { id } = await params;
+type Props = { params: Promise<{ id: string }> };
 
+/**
+ * Carga el pedido o lanza `notFound()`. Con `cache`, el título de la pestaña y la página
+ * comparten una sola consulta; si no existe, la pestaña también lleva el título del 404.
+ */
+const loadOrder = cache(async (id: string): Promise<OrderDetail> => {
+  await requireUser();
   if (!z.uuid().safeParse(id).success) {
     notFound();
   }
@@ -96,6 +96,16 @@ export default async function PedidoPage({ params }: { params: Promise<{ id: str
   if (!order) {
     notFound();
   }
+  return order;
+});
+
+export async function generateMetadata({ params }: Props): Promise<Metadata> {
+  const order = await loadOrder((await params).id);
+  return { title: `Albarán ${orderReference(order.id)}` };
+}
+
+export default async function PedidoPage({ params }: Props) {
+  const order = await loadOrder((await params).id);
 
   const reference = orderReference(order.id);
   const customer = order.clientes;

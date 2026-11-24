@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { formatDate, formatDateTime } from "@/lib/domain/dates";
+import { formatDate, formatDateTime, parseIsoDate } from "@/lib/domain/dates";
 
 describe("formatDate", () => {
   it("muestra la fecha en formato español, en la hora de Madrid", () => {
@@ -25,5 +25,18 @@ describe("formatDateTime", () => {
 
   it("rechaza un texto que no es una fecha", () => {
     expect(() => formatDateTime("2026-13-45")).toThrow(RangeError);
+  });
+});
+
+describe("parseIsoDate", () => {
+  it("lee un texto ISO 8601, con zona o desfase", () => {
+    expect(parseIsoDate("2026-11-24T10:30:00Z").toISOString()).toBe("2026-11-24T10:30:00.000Z");
+    expect(parseIsoDate("2026-11-24T10:30:00+01:00").toISOString()).toBe("2026-11-24T09:30:00.000Z");
+  });
+
+  it("rechaza un texto vacío, con solo espacios o que no es una fecha", () => {
+    expect(() => parseIsoDate("")).toThrow(RangeError);
+    expect(() => parseIsoDate("   ")).toThrow(RangeError);
+    expect(() => parseIsoDate("mañana")).toThrow(RangeError);
   });
 });
