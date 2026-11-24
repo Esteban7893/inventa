@@ -29,7 +29,7 @@ const loadCustomer = cache(async (id: string): Promise<CustomerDetail> => {
     .from("clientes")
     .select("id, nombre, email, telefono")
     .eq("id", id)
-    .maybeSingle<CustomerDetail>();
+    .maybeSingle();
 
   if (error) {
     throw new Error("No se ha podido cargar el cliente.");

@@ -85,6 +85,7 @@ Orquestador --tarea--> Develop --entrega--> Testing --informe--> Orquestador
 | T5 — Panel y acabado | [r1](docs/revisiones/T5-r1.md) | APROBADO | |
 | T6 — Integración continua | [r1](docs/revisiones/T6-r1.md) | APROBADO | |
 | T7 — Migraciones con historial | [r1](docs/revisiones/T7-r1.md) | APROBADO | |
+| T8 — Tipos generados | [r1](docs/revisiones/T8-r1.md) | APROBADO | |
 
 ### Fallos que encontró Testing y cómo se corrigieron
 
@@ -196,6 +197,7 @@ Hace falta Node.js 22 o posterior, la CLI de Supabase y un proyecto de Supabase.
    npm run typecheck  # tsc --noEmit
    npm test           # Vitest
    npm run build      # build de producción
+   npm run db:types   # regenera src/lib/database.types.ts desde el esquema de Supabase
    ```
 
 ## Producción
@@ -234,10 +236,11 @@ Flujo obligatorio para cualquier cambio de esquema:
    supabase db push --linked --dry-run
    ```
 
-4. **Aplicar la migración** una vez revisada:
+4. **Aplicar la migración** una vez revisada y regenerar los tipos TypeScript si cambió el esquema:
 
    ```bash
    supabase db push --linked
+   npm run db:types
    ```
 
 Respecto a entornos, actualmente Inventa trabaja contra un único proyecto de Supabase; si se separa un entorno de pruebas o preproducción, el mismo flujo se aplica enlazando cada proyecto con su `--project-ref` antes de subir cambios a producción. De forma opcional, se puede añadir un workflow manual (`workflow_dispatch`) en GitHub Actions para ejecutar `supabase db push` bajo demanda —nunca automático en cada push—, lo que requeriría configurar los secretos `SUPABASE_ACCESS_TOKEN` y `SUPABASE_DB_PASSWORD` en GitHub Secrets.

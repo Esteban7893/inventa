@@ -12,7 +12,7 @@ import { requireUser } from "@/lib/auth";
 import { buildDashboard, monthName } from "@/lib/domain/dashboard";
 import { formatDate } from "@/lib/domain/dates";
 import { formatCents } from "@/lib/domain/money";
-import { orderReference } from "@/lib/domain/order";
+import { orderReference, parseOrderStatus } from "@/lib/domain/order";
 import { createClient } from "@/lib/supabase/server";
 import type { Customer, Order, Product } from "@/lib/types";
 
@@ -139,25 +139,26 @@ export default async function PanelPage() {
 
   const supabase = await createClient();
   const [productsResult, ordersResult] = await Promise.all([
-    supabase
-      .from("productos")
-      .select("id, nombre, sku, stock, stock_minimo")
-      .overrideTypes<ProductRow[], { merge: false }>(),
+    supabase.from("productos").select("id, nombre, sku, stock, stock_minimo"),
     supabase
       .from("pedidos")
       .select("id, estado, total_cents, created_at, clientes(nombre)")
-      .order("created_at", { ascending: false })
-      .overrideTypes<OrderQueryRow[], { merge: false }>(),
+      .order("created_at", { ascending: false }),
   ]);
 
   if (productsResult.error || ordersResult.error) {
     throw new Error("No se ha podido cargar el panel.");
   }
 
+  const orders: OrderQueryRow[] = ordersResult.data.map((order) => ({
+    ...order,
+    estado: parseOrderStatus(order.estado),
+  }));
+
   const now = new Date();
   const { inventory, month, previousMonth, pending, latest } = buildDashboard(
     productsResult.data,
-    ordersResult.data,
+    orders,
     now,
   );
   const current = monthName(month.key);

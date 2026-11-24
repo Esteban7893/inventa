@@ -12,7 +12,7 @@ import { PageHeader } from "@/components/ui/page-header";
 import { requireUser } from "@/lib/auth";
 import { formatDateTime } from "@/lib/domain/dates";
 import { formatCents } from "@/lib/domain/money";
-import { lineSubtotal, orderReference } from "@/lib/domain/order";
+import { lineSubtotal, orderReference, parseOrderStatus } from "@/lib/domain/order";
 import { createClient } from "@/lib/supabase/server";
 import type { Customer, Order, OrderLine, Product } from "@/lib/types";
 
@@ -88,7 +88,7 @@ const loadOrder = cache(async (id: string): Promise<OrderDetail> => {
       "id, estado, total_cents, created_at, enviado_at, cancelado_at, clientes(nombre, email, telefono), pedido_lineas(id, cantidad, precio_unit_cents, productos(nombre, sku))",
     )
     .eq("id", id)
-    .maybeSingle<OrderDetail>();
+    .maybeSingle();
 
   if (error) {
     throw new Error("No se ha podido cargar el pedido.");
@@ -96,7 +96,7 @@ const loadOrder = cache(async (id: string): Promise<OrderDetail> => {
   if (!order) {
     notFound();
   }
-  return order;
+  return { ...order, estado: parseOrderStatus(order.estado) };
 });
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {

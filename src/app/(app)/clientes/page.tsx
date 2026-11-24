@@ -61,8 +61,7 @@ export default async function ClientesPage() {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("clientes")
-    .select("id, nombre, email, telefono")
-    .overrideTypes<CustomerRow[], { merge: false }>();
+    .select("id, nombre, email, telefono");
 
   if (error) {
     throw new Error("No se han podido cargar los clientes.");
