@@ -112,6 +112,23 @@ as $$
   where l.locktype = 'advisory' and l.pid = pg_catalog.pg_backend_pid() and l.granted
 $$;
 
+-- ¿Tiene esta sesión el bloqueo consultivo de (p_uid, p_clave)? Un bloqueo de un solo bigint
+-- sale en pg_locks con objsubid = 1 y la clave partida en classid (32 bits altos) y objid (bajos).
+create function pg_temp.tiene_bloqueo(p_uid uuid, p_clave uuid)
+returns boolean
+language sql
+as $$
+  select exists (
+    select 1 from pg_catalog.pg_locks l
+    where l.locktype = 'advisory'
+      and l.pid = pg_catalog.pg_backend_pid()
+      and l.granted
+      and l.objsubid = 1
+      and ((l.classid::bigint << 32) | l.objid::bigint)
+        = pg_catalog.hashtextextended('crear_pedido:' || p_uid::text || ':' || p_clave::text, 0)
+  )
+$$;
+
 create function pg_temp.run_tests()
 returns setof text
 language plpgsql
@@ -215,16 +232,21 @@ begin
     '07 - restriccion unique (owner_id, idempotency_key) en pedidos (con nulls distinct)'
   );
   -- Lo que no se ve en una sola sesión: el bloqueo es de transacción (pg_advisory_xact_lock,
-  -- no de sesión) y va antes de buscar la clave, y la búsqueda antes de bloquear los productos.
+  -- no de sesión), es una sentencia propia (perform) anterior a la búsqueda de la clave, y la
+  -- sentencia de búsqueda no lo lleva dentro (su instantánea se tomaría antes de esperar el
+  -- bloqueo y no vería el pedido de la otra llamada); la búsqueda va antes de bloquear los
+  -- productos. Un null (no se encuentra alguna de las partes) también da rojo.
   return next extensions.is(
-    (select strpos(p.prosrc, 'pg_advisory_xact_lock(') > 0
-       and strpos(p.prosrc, 'pg_advisory_xact_lock(') < strpos(p.prosrc, 'pe.idempotency_key = p_idempotency_key')
+    (select strpos(p.prosrc, 'perform pg_catalog.pg_advisory_xact_lock(') > 0
+       and strpos(p.prosrc, 'perform pg_catalog.pg_advisory_xact_lock(') < strpos(p.prosrc, 'select pe.id')
+       and strpos(substring(p.prosrc from 'select pe\.id[^;]*;'), 'advisory') = 0
+       and strpos(substring(p.prosrc from 'select pe\.id[^;]*;'), 'pe.idempotency_key = p_idempotency_key') > 0
        and strpos(p.prosrc, 'pe.idempotency_key = p_idempotency_key') < strpos(p.prosrc, 'for update')
        and strpos(p.prosrc, 'pg_advisory_lock(') = 0
      from pg_catalog.pg_proc p
      where p.oid = 'public.crear_pedido(uuid, jsonb, uuid)'::regprocedure),
     true,
-    '08 - crear_pedido toma pg_advisory_xact_lock antes de buscar la clave, y busca la clave antes de bloquear los productos (for update)'
+    '08 - crear_pedido toma pg_advisory_xact_lock en una sentencia propia antes de buscar la clave (la busqueda no lo lleva dentro), y busca la clave antes de bloquear los productos (for update)'
   );
 
   -- -------------------------------------------------------------------------
@@ -306,9 +328,9 @@ begin
     '15 - el stock se descuenta una sola vez (Cafe 100 -> 98, Taza 50 -> 49)'
   );
   return next extensions.is(
-    pg_temp.bloqueos(),
-    v_bloqueos + 1,
-    '16 - las llamadas con la clave toman un bloqueo consultivo (uno por usuario y clave) que dura hasta el final de la transaccion'
+    (pg_temp.bloqueos() - v_bloqueos)::text || '|' || pg_temp.tiene_bloqueo(v_a, v_k1)::text,
+    '1|true',
+    '16 - las llamadas con la clave toman un solo bloqueo consultivo, el de (A, clave), que dura hasta el final de la transaccion'
   );
 
   -- -------------------------------------------------------------------------
@@ -369,9 +391,9 @@ begin
     '21 - otra clave con el mismo contenido crea otro pedido con su clave y vuelve a descontar stock'
   );
   return next extensions.is(
-    pg_temp.bloqueos(),
-    v_bloqueos + 1,
-    '22 - la clave nueva toma su propio bloqueo consultivo'
+    (pg_temp.bloqueos() - v_bloqueos)::text || '|' || pg_temp.tiene_bloqueo(v_a, v_k2)::text,
+    '1|true',
+    '22 - la clave nueva toma su propio bloqueo consultivo, el de (A, clave nueva)'
   );
   return next extensions.is(
     pg_temp.resultado_de(v_ja, format(v_con_clave, v_ca, v_l, v_k1))
@@ -503,9 +525,9 @@ begin
     '36 - B con la misma clave que A crea su propio pedido (suyo, con esa clave); B solo ve ese y no el de A; su stock baja una vez (20 -> 17)'
   );
   return next extensions.is(
-    pg_temp.bloqueos(),
-    v_bloqueos + 1,
-    '37 - el bloqueo es por usuario y clave: B con la clave de A toma otro bloqueo'
+    (pg_temp.bloqueos() - v_bloqueos)::text || '|' || pg_temp.tiene_bloqueo(v_b, v_k1)::text,
+    '1|true',
+    '37 - el bloqueo es por usuario y clave: B con la clave de A toma otro bloqueo, el de (B, clave)'
   );
   return next extensions.is(
     pg_temp.resultado_de(v_ja, format(v_con_clave, v_ca, v_l, v_k1))
