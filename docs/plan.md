@@ -138,6 +138,10 @@ Encargo completo, autocontenido, en `docs/tareas/produccion-bloques-1-y-2.md`
   La SRI experimental (`experimental.sri`) no se usa: solo añade `integrity` a los scripts externos,
   y los scripts en línea de Next seguirían necesitando `'unsafe-inline'`. En desarrollo la CSP queda
   en report-only, porque no se ha podido probar el HMR con la política obligatoria.
+- **T13 — migración aplicada.** Tras el APROBADO de la ronda 2 (solo base de datos), el orquestador
+  aplicó `20261124163811_pedidos_idempotentes.sql` con `supabase db push` (queda una sola
+  `crear_pedido(uuid, jsonb, uuid)`) y regeneró `database.types.ts`. Advisors: solo los avisos de
+  siempre (las tres funciones `security definer` de D8 y la protección de contraseñas de T15).
 - **T9 — ejecución de pgTAP sin Docker.** `supabase test db --linked` también invoca un
   contenedor Docker (`pg_prove`) y falla en máquinas sin Docker en marcha. Decisión: habilitar
   `pgtap` en el esquema `extensions` mediante migración (`supabase migration new`), escribir los
