@@ -84,6 +84,8 @@ Orquestador --tarea--> Develop --entrega--> Testing --informe--> Orquestador
 | T4 — Pedidos | [r1](docs/revisiones/T4-r1.md) | APROBADO | |
 | T5 — Panel y acabado | [r1](docs/revisiones/T5-r1.md) | APROBADO | |
 | T6 — Integración continua | [r1](docs/revisiones/T6-r1.md) | APROBADO | |
+| T6 — Integración continua | [r2](docs/revisiones/T6-r2.md) | SUSPENSO | Lista del README partida por el párrafo de protección de `main` (D23) |
+| T6 — Integración continua | [r3](docs/revisiones/T6-r3.md) | APROBADO | |
 | T7 — Migraciones con historial | [r1](docs/revisiones/T7-r1.md) | APROBADO | |
 | T8 — Tipos generados | [r1](docs/revisiones/T8-r1.md) | APROBADO | |
 | T9 — Tests de base de datos (pgTAP) | [r1](docs/revisiones/T9-r1.md) | APROBADO | |
@@ -226,11 +228,13 @@ Hace falta Node.js 22 o posterior, la CLI de Supabase y un proyecto de Supabase.
 
 Cada pull request y cada push a `main` ejecutan [`.github/workflows/ci.yml`](.github/workflows/ci.yml) en GitHub Actions con dos comprobaciones obligatorias y un job E2E opcional:
 
-- **Calidad:** instala dependencias con `npm ci` (Node.js 22 LTS) y ejecuta `npm run lint`, `npm run typecheck`, `npm test` y `npm run build` con valores ficticios para las variables públicas de Supabase.
-- **Secretos:** analiza el historial del PR o del push con Gitleaks (`.gitleaks.toml`) para evitar que entren credenciales en el repositorio.
+- **Calidad:** instala dependencias con `npm ci` (Node.js 22 LTS) y ejecuta `npm run lint` (falla también con avisos), `npm run typecheck`, `npm test` y `npm run build` con valores ficticios para las variables públicas de Supabase.
+- **Secretos:** escanea **todo el historial** de git con la CLI de Gitleaks (versión fijada y comprobada por SHA-256 en el workflow; reglas por defecto más `.gitleaks.toml`) para evitar que entren credenciales en el repositorio. Para actualizar Gitleaks se cambian a mano `GITLEAKS_VERSION` y `GITLEAKS_SHA256` en `ci.yml`.
 - **E2E (Playwright) (opcional):** solo se ejecuta si están configurados en GitHub Secrets `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`, `E2E_EMAIL` y `E2E_PASSWORD`. Si existen, instala Chromium, compila la app con `npm run build` y lanza `npm run test:e2e` contra `npm run start`. Si faltan, el job se omite sin bloquear el PR.
 
-Las actualizaciones de dependencias de `npm` y `github-actions` se revisan cada semana mediante [`.github/dependabot.yml`](.github/dependabot.yml), agrupando las versiones menores y de corrección.
+`main` está protegida en GitHub: para los cambios normales el pull request es obligatorio, con los checks `Calidad` y `Secretos` en verde y la rama al día, y no se admiten force-push ni borrar la rama. La protección no se aplica a los administradores del repositorio (`enforce_admins` desactivado), que podrían saltársela. El job E2E no es un check obligatorio porque solo corre si existen sus secretos.
+
+Las actualizaciones de dependencias de `npm` y `github-actions` se revisan cada semana mediante [`.github/dependabot.yml`](.github/dependabot.yml), agrupando las versiones menores y de corrección. Las versiones mayores llegan en PR separados para revisarlas una a una, salvo las de `@types/node`, que se ignoran porque siguen la versión de Node del proyecto (22).
 
 ### Migraciones
 

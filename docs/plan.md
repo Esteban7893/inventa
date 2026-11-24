@@ -62,6 +62,12 @@ Encargo completo, autocontenido, en `docs/tareas/produccion-bloques-1-y-2.md`
   `gh api`: PR obligatorio, checks `Calidad` y `Secretos` obligatorios con la rama al día y sin
   force-push ni borrado. El job `E2E (Playwright)` no es obligatorio porque solo corre si
   existen los secretos.
+- **T6–T10 — retomadas por el equipo.** La primera versión de T6–T10 (informes r1–r2 de esas
+  tareas, PR #1–#5) la hizo otro agente (Gemini en Antigravity) haciendo a la vez los tres
+  papeles, sin subagentes. Como la prueba pide este equipo de Claude Code, el orquestador vuelve
+  a pasar T6–T10 por el bucle sobre `main`: Develop retoma cada tarea partiendo de ese código y
+  rehace lo que no cumpla, y Testing la revisa en rondas nuevas (la numeración continúa). Los
+  informes anteriores se conservan tal cual.
 - **T9 — ejecución de pgTAP sin Docker.** `supabase test db --linked` también invoca un
   contenedor Docker (`pg_prove`) y falla en máquinas sin Docker en marcha. Decisión: habilitar
   `pgtap` en el esquema `extensions` mediante migración (`supabase migration new`), escribir los
