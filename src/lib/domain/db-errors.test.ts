@@ -133,3 +133,12 @@ describe("dbErrorMessage", () => {
     expect(dbErrorMessage({ code: "23505", message: "duplicate key value" })).toBe(GENERIC);
   });
 });
+
+describe("dbErrorMessage (listados de T11)", () => {
+  it("traduce el cursor y el filtro de pedidos no válidos", () => {
+    expect(dbErrorMessage({ message: "CURSOR_INVALIDO" })).toBe(
+      "El enlace de esta página de pedidos no es válido. Vuelve a la primera página.",
+    );
+    expect(dbErrorMessage({ message: "FILTRO_INVALIDO" })).toBe("Ese filtro de estado no existe. Elige uno de la lista.");
+  });
+});

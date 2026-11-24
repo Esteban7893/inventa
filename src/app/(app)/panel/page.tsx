@@ -9,7 +9,7 @@ import { LedgerTable, type LedgerColumn } from "@/components/ui/ledger-table";
 import { PageHeader } from "@/components/ui/page-header";
 import { Stamp } from "@/components/ui/stamp";
 import { requireUser } from "@/lib/auth";
-import { buildDashboard, monthName } from "@/lib/domain/dashboard";
+import { LATEST_ORDERS, LOW_STOCK_SHOWN, monthName, readPanelSummary } from "@/lib/domain/dashboard";
 import { formatDate } from "@/lib/domain/dates";
 import { formatCents } from "@/lib/domain/money";
 import { orderReference, parseOrderStatus } from "@/lib/domain/order";
@@ -138,32 +138,33 @@ export default async function PanelPage() {
   await requireUser();
 
   const supabase = await createClient();
-  const [productsResult, ordersResult] = await Promise.all([
-    supabase.from("productos").select("id, nombre, sku, stock, stock_minimo"),
+  const [summaryResult, lowStockResult, latestResult] = await Promise.all([
+    supabase.rpc("panel_resumen").single(),
+    supabase.rpc("productos_bajo_minimo", { p_limite: LOW_STOCK_SHOWN }).select("id, nombre, sku, stock, stock_minimo"),
     supabase
       .from("pedidos")
       .select("id, estado, total_cents, created_at, clientes(nombre)")
-      .order("created_at", { ascending: false }),
+      .order("created_at", { ascending: false })
+      .order("id", { ascending: false })
+      .limit(LATEST_ORDERS),
   ]);
 
-  if (productsResult.error || ordersResult.error) {
+  if (summaryResult.error || lowStockResult.error || latestResult.error) {
     throw new Error("No se ha podido cargar el panel.");
   }
 
-  const orders: OrderQueryRow[] = ordersResult.data.map((order) => ({
+  const latest: OrderQueryRow[] = latestResult.data.map((order) => ({
     ...order,
     estado: parseOrderStatus(order.estado),
   }));
+  const lowStock: ProductRow[] = lowStockResult.data;
 
   const now = new Date();
-  const { inventory, month, previousMonth, pending, latest } = buildDashboard(
-    productsResult.data,
-    orders,
-    now,
-  );
+  // Los meses los decide panel_resumen (hora de Madrid): el título y las cifras van juntos.
+  const { inventory, month, previousMonth, pending } = readPanelSummary(summaryResult.data);
   const current = monthName(month.key);
   const previous = monthName(previousMonth.key);
-  const lowCount = inventory.lowStock.length;
+  const lowCount = inventory.lowStock;
 
   return (
     <>
@@ -260,7 +261,7 @@ export default async function PanelPage() {
         <LedgerTable
           caption="Productos bajo mínimo, primero los que más se alejan del mínimo"
           columns={LOW_STOCK_COLUMNS}
-          rows={inventory.lowStock}
+          rows={lowStock}
           rowKey={(product) => product.id}
           minWidth={560}
           empty={
@@ -282,6 +283,12 @@ export default async function PanelPage() {
             )
           }
         />
+        {lowCount > lowStock.length && (
+          <p className="mt-3 text-[13px] leading-snug text-ink-soft">
+            Se muestran los <span className="figures">{lowStock.length}</span> que más se alejan del mínimo, de{" "}
+            <span className="figures">{lowCount}</span> productos bajo mínimo.
+          </p>
+        )}
       </section>
 
       <section aria-labelledby="ultimos-pedidos" className="mt-12">

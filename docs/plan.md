@@ -118,6 +118,13 @@ Encargo completo, autocontenido, en `docs/tareas/produccion-bloques-1-y-2.md`
   `crear_pedido`, `cancelar_pedido` y `enviar_pedido` son el diseño de D8 (ya estaban antes);
   `auth_leaked_password_protection` es un ajuste de Auth que corresponde a T15; los 5 `unused_index`
   son los índices nuevos, que la fase 2 empieza a usar. Ninguno vuelve a Develop.
+- **T11 (ronda 3) — límites de la interfaz.** Productos y clientes se paginan por número de página
+  (50 por página, `offset`) y no por cursor: el coste está acotado y un cursor por `nombre` en un
+  `or` de PostgREST sería frágil. Pedidos sí usa cursor `(created_at, id)`, y «← Los más recientes»
+  vuelve a la primera página porque `pedidos_pagina` solo avanza hacia atrás en el tiempo. Los
+  desplegables de nuevo pedido traen como mucho 500 clientes y 500 productos (`ORDER_FORM_OPTIONS`)
+  con un aviso si hay más: es un límite funcional aceptado para el tamaño de esta app; un selector
+  con búsqueda en el servidor queda como mejora futura.
 - **T9 — ejecución de pgTAP sin Docker.** `supabase test db --linked` también invoca un
   contenedor Docker (`pg_prove`) y falla en máquinas sin Docker en marcha. Decisión: habilitar
   `pgtap` en el esquema `extensions` mediante migración (`supabase migration new`), escribir los

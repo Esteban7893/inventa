@@ -5,6 +5,12 @@ import type { CreateOrderArgs } from "@/lib/types";
 /** Máximo de líneas de un pedido (un albarán razonable; evita peticiones desmesuradas). */
 export const MAX_ORDER_LINES = 100;
 
+/**
+ * Opciones que traen los desplegables de cliente y de producto del formulario de pedido.
+ * Con más, el desplegable muestra los primeros por orden alfabético y la página lo avisa.
+ */
+export const ORDER_FORM_OPTIONS = 500;
+
 const TEXT_MAX = 64;
 
 const MESSAGES = {
