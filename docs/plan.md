@@ -40,7 +40,8 @@ Encargo completo, autocontenido, en `docs/tareas/produccion-bloques-1-y-2.md`
 - [x] **T7 — Migraciones con historial.** `supabase link` + `migration repair` de 0001/0002;
   a partir de aquí solo `supabase db push`.
 - [x] **T8 — Tipos generados.** `supabase gen types` → `src/lib/database.types.ts`.
-- [x] **T9 — Tests de base de datos.** pgTAP en `supabase/tests/` (las 27 verificaciones de T2).
+- [x] **T9 — Tests de base de datos.** pgTAP en `supabase/tests/` (las 27 verificaciones de T2,
+  más acceso de `anon`, aislamiento, reglas y esquema de seguridad: 90 pruebas en 4 archivos).
 - [x] **T10 — Tests E2E.** Playwright en `e2e/` con los flujos críticos.
 - [ ] **T11 — Consultas que escalan.** Paginación, agregados del panel en SQL, índices.
 - [ ] **T12 — Cabeceras de seguridad.** HSTS, CSP (primero report-only) y compañía.
@@ -80,6 +81,11 @@ Encargo completo, autocontenido, en `docs/tareas/produccion-bloques-1-y-2.md`
   interpreta así: la app solo lee las dos variables `NEXT_PUBLIC_*`; `SUPABASE_PROJECT_REF` no es
   un secreto y solo la usa esa herramienta. Los `| null` defensivos de los objetos anidados de las
   páginas se quedan como están (quitarlos cambia la interfaz y no es parte de T8).
+- **T9 (ronda 2) — alcance de los tests de esquema.** `public.rls_auto_enable()` es de Supabase
+  (`security definer`, `search_path = pg_catalog`): los tests de D8 la excluyen de la regla literal
+  `search_path = ''`, pero le exigen `search_path` fijo y que nadie de la API pueda ejecutarla.
+  `npm run test:db` no entra en CI de momento: necesitaría un token de Supabase como secreto de
+  GitHub, y eso lo decide el humano.
 - **T9 — ejecución de pgTAP sin Docker.** `supabase test db --linked` también invoca un
   contenedor Docker (`pg_prove`) y falla en máquinas sin Docker en marcha. Decisión: habilitar
   `pgtap` en el esquema `extensions` mediante migración (`supabase migration new`), escribir los
