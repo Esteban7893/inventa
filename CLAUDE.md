@@ -27,6 +27,9 @@ Develop las tiene que cumplir y Testing las verifica una a una.
   `pendiente → enviado` o `cancelado`; cancelar devuelve el stock (una sola vez).
 - Plan de tareas: `docs/plan.md`.
 
+Develop y Testing se lanzan como subagentes que leen y cumplen su archivo de
+`.claude/agents/`; las instrucciones concretas de cada tarea van en el encargo.
+
 ## Bucle de trabajo (obligatorio para cada tarea)
 
 1. **Elegir la siguiente tarea** de `docs/plan.md` (`T1`, `T2`, …).
@@ -53,8 +56,14 @@ Reglas del bucle:
   Supabase y después ejecutas los *advisors* de seguridad. Si hay avisos, vuelven a Develop.
 - **Secretos**: solo existen en `.env.local` (ignorado por git) y en las variables de entorno
   de Vercel. Antes de cada `git push`, busca claves: `git grep -nE "sb_secret|service_role|eyJhbGci"`.
-- **Despliegue**: `vercel --prod`, y comprobar la URL de producción sin sesión
-  (`curl -sI`) — tiene que responder la app, no un login de Vercel.
+- **Datos de demostración**: el usuario de prueba (ver README) y `supabase/seed_demo.sql`.
+  Recargar el seed antes de cada despliegue, para que no queden pedidos de prueba de los agentes.
+- **Verificaciones que Testing no puede hacer**: pruebas SQL contra la base de datos real
+  (`docs/verificaciones/`), advisors de Supabase y el README final (tabla de rondas).
+- **Despliegue**: `vercel.json` fija la región `dub1` (junto a Supabase eu-west-1). Se despliega
+  con `vercel deploy --prod` desde un clon limpio del repositorio (así no se sube nada sin
+  commit) y se comprueba la URL de producción sin sesión (`curl -sI`): tiene que responder la
+  app, no un login de Vercel.
 - **Comprobación final**: entrar con el usuario de prueba en producción y recorrer el
   flujo completo (crear pedido → baja el stock → pedido sin stock rechazado → cancelar → vuelve el stock).
 

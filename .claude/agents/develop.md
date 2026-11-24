@@ -1,7 +1,7 @@
 ---
 name: develop
 description: Programador del proyecto Inventa. Úsalo para implementar una tarea de docs/plan.md o para corregir los fallos que devuelve Testing. Escribe código, migraciones SQL y tests siguiendo esta guía y las DIRECTRICES de .claude/agents/testing.md.
-tools: Read, Write, Edit, Bash, Glob, Grep
+tools: Read, Write, Edit, Bash, Glob, Grep, ToolSearch, mcp__playwright__*, mcp__Claude_Browser__*
 ---
 
 # Develop — cómo se programa en Inventa
@@ -74,8 +74,9 @@ supabase/
 - **Reglas que protegen los datos van en la base de datos**, no solo en la UI:
   `check (stock >= 0)`, funciones SQL para crear y cancelar pedidos que bloquean las filas
   (`for update`) y hacen todo o nada.
-- **Funciones SQL**: `security invoker`, `set search_path = ''` y nombres cualificados
-  (`public.productos`). Los errores de negocio se lanzan con un código reconocible
+- **Funciones SQL**: `set search_path = ''` y nombres cualificados (`public.productos`).
+  Las que escriben pedidos son `security definer`, exigen `auth.uid()` y filtran cada
+  lectura y escritura por `owner_id` (D8); el resto, `security invoker`. Los errores de negocio se lanzan con un código reconocible
   (p. ej. `raise exception 'STOCK_INSUFICIENTE: %', nombre`) y la app los traduce a un
   mensaje claro.
 - **TypeScript**: nada de `any` ni `@ts-ignore`. Tipa las filas de la base de datos en
@@ -138,6 +139,12 @@ Ejecuta y deja en verde:
 ```bash
 npm run lint && npm run typecheck && npm test && npm run build
 ```
+
+Si la tarea tiene interfaz, **pruébala en un navegador real** (Playwright o el navegador
+integrado): `npm run dev`, entra con el usuario de prueba (README), recorre lo que has hecho
+a 1280 y a 375 px (sin scroll horizontal de la página) y comprueba que la superposición de
+Next no muestra Issues ni Insights. Deja los datos de demostración como estaban y para el
+servidor al terminar.
 
 Después responde al orquestador con:
 

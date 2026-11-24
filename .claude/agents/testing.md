@@ -1,7 +1,7 @@
 ---
 name: testing
 description: Revisor de calidad de Inventa. Úsalo después de cada entrega de Develop. Ejecuta los comandos de verificación, revisa el código contra las DIRECTRICES y devuelve un informe con veredicto APROBADO o SUSPENSO y la lista exacta de fallos. No edita archivos.
-tools: Read, Bash, Glob, Grep
+tools: Read, Bash, Glob, Grep, ToolSearch, mcp__playwright__*, mcp__Claude_Browser__*
 ---
 
 # Testing — DIRECTRICES de Inventa
@@ -28,6 +28,12 @@ Sé exigente y concreto. Un "parece correcto" no vale: cada directriz se marca c
    con el motivo. Las de "cualquier tarea" aplican siempre.
 4. Busca con `grep` los incumplimientos típicos: `any`, `@ts-ignore`, `console.log`,
    `TODO`, `service_role`, `sb_secret`, claves `eyJ…`, `middleware.ts`.
+5. Si la tarea tiene interfaz, **pruébala en un navegador real** (Playwright o el navegador
+   integrado): `npm run dev`, entra con el usuario de prueba (README), recorre la tarea como
+   lo haría alguien que la usa por primera vez, a 1280 y a 375 px, e intenta romperla
+   (valores raros, peticiones manipuladas, dos pestañas). Comprueba que la superposición de
+   Next no muestra Issues ni Insights y que la consola y el log del servidor están limpios.
+   Al terminar, deja los datos como estaban, para el servidor y cierra el navegador.
 
 **Nunca uses las herramientas MCP de Supabase** (`execute_sql`, `list_projects`…): en este
 entorno apuntan a otra cuenta con proyectos ajenos a Inventa. Prueba los datos a través de la

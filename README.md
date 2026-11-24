@@ -46,6 +46,12 @@ instrucciones:
 | Develop | [`.claude/agents/develop.md`](.claude/agents/develop.md) | Programa cada tarea siguiendo su guía (stack, estructura, Server Actions, lógica pura con tests, guía visual «Albarán») y las directrices de Testing. No puede darse por aprobado. |
 | Testing | [`.claude/agents/testing.md`](.claude/agents/testing.md) | Revisa cada entrega contra las **DIRECTRICES D1–D22** (calidad, seguridad, reglas de negocio, interfaz, Next.js 16 y estilo). Ejecuta lint, tipos, tests y build, prueba la app en el navegador y devuelve un informe con veredicto. No edita archivos. |
 
+Durante la construcción, Develop y Testing se lanzaron como subagentes genéricos de Claude Code
+con la orden de leer y cumplir su archivo `.md` (los agentes de `.claude/agents/` se crearon en
+la misma sesión y Claude Code solo los registra con nombre propio al empezar una sesión nueva).
+Cada encargo concreto del orquestador añadía el texto de la tarea y, en las rondas de
+corrección, el informe completo de Testing.
+
 ### El bucle
 
 ```
