@@ -68,6 +68,12 @@ Encargo completo, autocontenido, en `docs/tareas/produccion-bloques-1-y-2.md`
   a pasar T6–T10 por el bucle sobre `main`: Develop retoma cada tarea partiendo de ese código y
   rehace lo que no cumpla, y Testing la revisa en rondas nuevas (la numeración continúa). Los
   informes anteriores se conservan tal cual.
+- **T7 (ronda 2) — migraciones.** Una migración aplicada no se edita, así que `0002` se queda
+  como está; el README documenta cómo marcarla como aplicada en un proyecto que no tenga
+  `public.rls_auto_enable()`. Orden: Develop escribe la migración con `supabase migration new`;
+  el orquestador la aplica con `supabase db push` cuando Testing ha aprobado la tarea y antes de
+  fusionar el PR, y por eso cada migración tiene que ser compatible con el código de `main`.
+  `develop.md` se actualiza con esta regla y con el nombre real de los archivos (`<fecha>_nombre.sql`).
 - **T9 — ejecución de pgTAP sin Docker.** `supabase test db --linked` también invoca un
   contenedor Docker (`pg_prove`) y falla en máquinas sin Docker en marcha. Decisión: habilitar
   `pgtap` en el esquema `extensions` mediante migración (`supabase migration new`), escribir los

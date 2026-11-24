@@ -44,7 +44,7 @@ instrucciones:
 |---|---|---|
 | Orquestador | [`CLAUDE.md`](CLAUDE.md) | Divide el trabajo en tareas ([`docs/plan.md`](docs/plan.md)), se las asigna a Develop, pide la revisión a Testing, guarda los informes, hace los commits, aplica las migraciones y despliega. No escribe código de producto. |
 | Develop | [`.claude/agents/develop.md`](.claude/agents/develop.md) | Programa cada tarea siguiendo su guía (stack, estructura, Server Actions, lógica pura con tests, guía visual «Albarán») y las directrices de Testing. No puede darse por aprobado. |
-| Testing | [`.claude/agents/testing.md`](.claude/agents/testing.md) | Revisa cada entrega contra las **DIRECTRICES D1–D22** (calidad, seguridad, reglas de negocio, interfaz, Next.js 16 y estilo). Ejecuta lint, tipos, tests y build, prueba la app en el navegador y devuelve un informe con veredicto. No edita archivos. |
+| Testing | [`.claude/agents/testing.md`](.claude/agents/testing.md) | Revisa cada entrega contra las **DIRECTRICES D1–D30** (calidad, seguridad, reglas de negocio, interfaz, Next.js 16, estilo y producción). Ejecuta lint, tipos, tests y build, prueba la app en el navegador y devuelve un informe con veredicto. No edita archivos. |
 
 Durante la construcción, Develop y Testing se lanzaron como subagentes genéricos de Claude Code
 con la orden de leer y cumplir su archivo `.md` (los agentes de `.claude/agents/` se crearon en
@@ -174,28 +174,54 @@ Hace falta Node.js 22 o posterior, la CLI de Supabase y un proyecto de Supabase.
    (*Project Settings → API*). Si quieres ejecutar los tests E2E con Playwright, añade también
    `E2E_EMAIL` y `E2E_PASSWORD` con el usuario de pruebas (o pásalas por variable de entorno).
 
-2. **Base de datos.** Enlaza tu proyecto con la CLI de Supabase y aplica las migraciones de
-   `supabase/migrations/` para dejar el esquema y el historial sincronizados:
+2. **Base de datos.** El esquema se crea solo con las migraciones de `supabase/migrations/`,
+   nunca pegando SQL en el editor de Supabase. Inicia sesión en la CLI, enlaza **tu** proyecto
+   (el `ref` es el identificador que aparece en la URL de tu proyecto en el panel de Supabase)
+   y aplica las migraciones:
 
    ```bash
-   supabase link --project-ref <ref-del-proyecto>
-   supabase db push --linked
+   supabase login
+   supabase link --project-ref <ref-de-tu-proyecto>
+   supabase db push --linked --dry-run   # lista lo que se va a aplicar, sin aplicar nada
+   supabase db push --linked             # aplica las migraciones y las anota en el historial
+   supabase migration list --linked      # las columnas Local y Remote tienen que coincidir
    ```
+
+   `supabase link` y `supabase db push` pueden pedir la contraseña de la base de datos; la
+   escribes tú en la terminal y no se guarda en el repositorio. Lo que la CLI guarda al enlazar
+   va a `supabase/.temp/`, que está en `.gitignore`. Estos comandos se han comprobado con la
+   CLI de Supabase 2.122.0.
 
    Las migraciones actuales son:
 
    - `supabase/migrations/0001_esquema.sql`: tablas, RLS, políticas y funciones de pedidos.
    - `supabase/migrations/0002_revocar_rls_auto_enable.sql`: quita el permiso de ejecución de
-     `public.rls_auto_enable()` (función que solo existe si el proyecto tiene activado el RLS
-     automático de Supabase).
+     `public.rls_auto_enable()`. Supabase solo crea esa función en los proyectos que tienen
+     activado el RLS automático en las tablas nuevas.
    - `supabase/migrations/20261124094951_habilitar_pgtap.sql`: habilita la extensión `pgtap` en
      el esquema `extensions` para los tests de base de datos.
 
+   **Si tu proyecto no tiene `public.rls_auto_enable()`**, `supabase db push` se para en
+   `0002` con un error de función inexistente. En ese caso `0002` no tiene nada que hacer en tu
+   proyecto. Comprueba con `supabase migration list --linked` que `0001` ya sale en la columna
+   Remote; después marca `0002` como aplicada sin ejecutarla y vuelve a lanzar el push para que
+   se aplique el resto:
+
+   ```bash
+   supabase migration repair --status applied 0002 --linked
+   supabase db push --linked
+   ```
+
 3. **Datos de demostración (opcional).** Crea primero el usuario `prueba@inventa.test` en
-   *Authentication → Users*. Después ejecuta `supabase/seed_demo.sql` en el editor SQL, que
-   necesita permisos de administrador para leer `auth.users`. El script **borra los datos de
-   ese usuario** y vuelve a cargar 10 productos, 6 clientes y 8 pedidos. Los pedidos se crean
-   con `crear_pedido`, así que el stock queda coherente.
+   *Authentication → Users*. Después carga los datos con la CLI:
+
+   ```bash
+   supabase db query --linked -f supabase/seed_demo.sql
+   ```
+
+   El script **borra los datos de ese usuario** y vuelve a cargar 10 productos, 6 clientes y
+   8 pedidos. Los pedidos se crean con `crear_pedido`, así que el stock queda coherente. Son
+   datos, no esquema: no se anotan en el historial de migraciones.
 
 4. **Arrancar y comprobar**
 
@@ -238,37 +264,74 @@ Las actualizaciones de dependencias de `npm` y `github-actions` se revisan cada 
 
 ### Migraciones
 
-El historial de esquema se gestiona exclusivamente con la CLI de Supabase (`supabase_migrations.schema_migrations`). **Nunca se ejecuta SQL suelto contra producción** desde el editor SQL ni mediante consultas ad hoc.
+El esquema de producción (proyecto de Supabase `inventa`, ref `uqupgywhmmdpjjenxywb`, región
+eu-west-1) solo cambia con migraciones de `supabase/migrations/` aplicadas con la CLI de
+Supabase, que anota cada una en su historial (`supabase_migrations.schema_migrations`).
+**Nunca se cambia el esquema con SQL suelto** contra producción: ni desde el editor SQL de
+Supabase ni con `supabase db query`. Una migración ya aplicada no se edita; si hay que
+corregirla, se crea otra nueva.
 
-Flujo obligatorio para cualquier cambio de esquema:
+**Quién hace qué.** Develop escribe la migración en la rama de la tarea. Solo el orquestador
+la aplica a producción con `supabase db push` y, después, ejecuta los *advisors* de seguridad
+de Supabase. Develop y Testing solo usan comandos de lectura:
+`supabase migration list --linked` y `supabase db push --linked --dry-run`.
 
-1. **Enlazar el proyecto** (una vez por entorno local; la CLI pedirá la contraseña de la base de datos):
+Flujo para cada cambio de esquema:
 
-   ```bash
-   supabase link --project-ref uqupgywhmmdpjjenxywb
-   ```
-
-2. **Crear la migración** en una rama de trabajo:
+1. **Crear la migración** (Develop, en la rama de la tarea):
 
    ```bash
    supabase migration new <nombre>
    ```
 
-3. **Revisar en PR y comprobar antes de aplicar** que el historial local y remoto coinciden y qué cambios se van a ejecutar:
+   Crea `supabase/migrations/<fecha-y-hora>_<nombre>.sql` vacío; ahí va el SQL del cambio.
+
+2. **Revisar antes de aplicar** (Testing, en el PR). La migración nueva solo aparece en la
+   columna Local, y el *dry run* lista únicamente esa migración:
 
    ```bash
    supabase migration list --linked
    supabase db push --linked --dry-run
    ```
 
-4. **Aplicar la migración** una vez revisada y regenerar los tipos TypeScript si cambió el esquema:
+3. **Aplicar** (orquestador), cuando Testing ha aprobado la tarea y **antes de fusionar el
+   PR**. Después comprueba que las columnas Local y Remote coinciden y, si cambió el esquema,
+   regenera los tipos de TypeScript:
 
    ```bash
    supabase db push --linked
+   supabase migration list --linked
    npm run db:types
    ```
 
-Respecto a entornos, actualmente Inventa trabaja contra un único proyecto de Supabase; si se separa un entorno de pruebas o preproducción, el mismo flujo se aplica enlazando cada proyecto con su `--project-ref` antes de subir cambios a producción. De forma opcional, se puede añadir un workflow manual (`workflow_dispatch`) en GitHub Actions para ejecutar `supabase db push` bajo demanda —nunca automático en cada push—, lo que requeriría configurar los secretos `SUPABASE_ACCESS_TOKEN` y `SUPABASE_DB_PASSWORD` en GitHub Secrets.
+Como la migración llega a producción antes que el código del PR, durante ese rato la app
+desplegada desde `main` ya trabaja con el esquema nuevo. Por eso **cada migración tiene que
+funcionar con el código que ya está en `main`**: por ejemplo, añadir una columna nueva con
+valor por defecto sí; borrar o renombrar algo que `main` todavía usa, no.
+
+Para enlazar una copia local con producción hace falta acceso al proyecto `inventa` en
+Supabase: `supabase login` y `supabase link --project-ref uqupgywhmmdpjjenxywb` (puede pedir
+la contraseña de la base de datos, que escribe la persona en la terminal). El enlace se guarda
+en `supabase/.temp/`, que no se sube al repositorio. Para montar tu propio proyecto, sigue el
+paso 2 de «Cómo ejecutarlo en local».
+
+**Historial de partida.** `0001` y `0002` se aplicaron antes de que existiera el historial.
+En T7 se marcaron como aplicadas sin volver a ejecutarlas
+(`supabase migration repair --status applied 0001 0002 --linked`). Fue una corrección puntual:
+en el flujo normal no se usa `migration repair`. Al cerrar T7, `supabase migration list --linked` mostraba
+`0001`, `0002` y `20261124094951` iguales en local y en remoto, y
+`supabase db push --linked --dry-run` respondía que no había nada pendiente.
+
+**Datos, no esquema.** Dos cosas sí ejecutan SQL contra la base de datos con
+`supabase db query --linked -f`, y ninguna cambia el esquema: la recarga de los datos de
+demostración (`supabase/seed_demo.sql`, solo la hace el orquestador) y `npm run test:db`
+cuando no hay Docker (cada archivo de tests va en `begin; … rollback;` y no deja filas).
+
+Inventa trabaja con un único proyecto de Supabase. Si algún día se separa un entorno de
+pruebas, el mismo flujo se aplica primero allí, enlazando ese proyecto con su `--project-ref`.
+No hay todavía un workflow de GitHub Actions para migraciones. Si se añade, será manual
+(`workflow_dispatch`), nunca en cada push, y necesitará que el humano guarde en GitHub los
+secretos `SUPABASE_ACCESS_TOKEN` y `SUPABASE_DB_PASSWORD`.
 
 ### Conectar Vercel con GitHub (previews por PR)
 

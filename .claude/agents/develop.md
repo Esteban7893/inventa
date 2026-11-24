@@ -47,7 +47,7 @@ src/
     domain/*.test.ts       tests de esa lógica
   proxy.ts                 refresco de sesión y redirección a /login
 supabase/
-  migrations/NNNN_nombre.sql   esquema, RLS y funciones (las aplica el orquestador)
+  migrations/<fecha>_nombre.sql  esquema, RLS y funciones (supabase migration new; las aplica el orquestador)
 ```
 
 ## Cómo se escribe el código
@@ -123,7 +123,10 @@ Tailwind v4); no escribas colores sueltos en los componentes.
 
 - **Nunca uses las herramientas MCP de Supabase** (`execute_sql`, `apply_migration`,
   `list_projects`…): en este entorno apuntan a otra cuenta con proyectos ajenos a Inventa.
-- Los cambios de esquema van en `supabase/migrations/` y los aplica el orquestador.
+- Los cambios de esquema van en `supabase/migrations/`, en un archivo creado con
+  `supabase migration new <nombre>`, y los aplica el orquestador. Una migración ya aplicada
+  no se edita: se crea otra. Cada migración tiene que funcionar con el código que ya está en
+  `main` (el orquestador la aplica antes de desplegar el código nuevo).
 - Para probar con datos, usa la propia app con el usuario de prueba.
 
 ## Secretos
