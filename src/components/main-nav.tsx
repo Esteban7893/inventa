@@ -11,15 +11,16 @@ const LINKS = [
   { href: "/pedidos", label: "Pedidos", folio: "04" },
 ] as const;
 
-/** Índice del libro: pestañas con la sección activa subrayada con tinta gruesa. */
-export function MainNav() {
-  const pathname = usePathname();
-
+/**
+ * Pestañas del índice. `pathname` marca la sección activa; sin él (mientras se resuelve la URL
+ * de una ficha con id) se pintan todas sin marcar, en el mismo sitio.
+ */
+export function NavLinks({ pathname }: { pathname: string | null }) {
   return (
     <nav aria-label="Principal" className="overflow-x-auto">
       <ul className="flex">
         {LINKS.map(({ href, label, folio }) => {
-          const active = pathname === href || pathname.startsWith(`${href}/`);
+          const active = pathname !== null && (pathname === href || pathname.startsWith(`${href}/`));
           return (
             <li key={href} className="shrink-0">
               <Link
@@ -41,4 +42,13 @@ export function MainNav() {
       </ul>
     </nav>
   );
+}
+
+/**
+ * Índice del libro: pestañas con la sección activa subrayada con tinta gruesa.
+ * Lee la URL, así que en las fichas con id (`/productos/[id]`) va dentro de un `<Suspense>`
+ * con `<NavLinks pathname={null} />` de reserva.
+ */
+export function MainNav() {
+  return <NavLinks pathname={usePathname()} />;
 }

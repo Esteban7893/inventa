@@ -16,6 +16,19 @@ export function formatCents(cents: number): string {
 }
 
 /**
+ * Escribe un importe en céntimos tal como se teclea en un campo de precio, p. ej. 1250 → "12,50"
+ * (coma decimal, sin miles ni símbolo). `parseEuros` lo vuelve a leer sin perder nada.
+ */
+export function formatEurosInput(cents: number): string {
+  if (!Number.isSafeInteger(cents) || cents < 0) {
+    throw new RangeError("El importe debe ser un número entero de céntimos, igual o mayor que cero.");
+  }
+  const euros = Math.trunc(cents / 100);
+  const rest = String(cents % 100).padStart(2, "0");
+  return `${euros},${rest}`;
+}
+
+/**
  * Convierte un importe escrito por la persona ("12,50", "1.234,56", "12.50 €")
  * en céntimos. Devuelve null si está vacío, es negativo o no es un importe válido.
  */

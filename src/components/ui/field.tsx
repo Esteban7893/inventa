@@ -1,10 +1,13 @@
-import type { ComponentProps, ReactNode } from "react";
+import { useId, type ComponentProps, type ReactNode } from "react";
 import { cx } from "@/components/ui/cx";
 
 type FieldOwnProps = {
   /** Texto de la etiqueta (se muestra como membrete). */
   label: string;
-  /** Nombre del campo en el formulario. También es el `id` si no se pasa otro. */
+  /**
+   * Nombre del campo en el formulario. Si no se pasa `id`, se genera uno único a partir de él:
+   * Next conserva ocultas las páginas visitadas y dos formularios iguales no deben repetir ids.
+   */
   name: string;
   /** Mensaje de error junto al campo. */
   error?: string;
@@ -15,8 +18,10 @@ type FieldOwnProps = {
 };
 
 type NumericProp = {
-  /** Cifra, importe, cantidad o SKU: Plex Mono con números tabulares, alineado a la derecha. */
+  /** Cifra, importe o cantidad: Plex Mono con números tabulares, alineado a la derecha. */
   numeric?: boolean;
+  /** Referencia, SKU o teléfono: Plex Mono con números tabulares, alineado a la izquierda. */
+  mono?: boolean;
 };
 
 const CONTROL =
@@ -54,6 +59,11 @@ function FieldFrame({ id, label, error, hint, required, className, children }: F
   );
 }
 
+function useFieldId(id: string | undefined, name: string): string {
+  const generated = useId();
+  return id ?? `${name}-${generated}`;
+}
+
 function describedBy(id: string, error?: string, hint?: ReactNode): string | undefined {
   if (error) return `${id}-error`;
   if (hint) return `${id}-hint`;
@@ -63,8 +73,8 @@ function describedBy(id: string, error?: string, hint?: ReactNode): string | und
 type InputFieldProps = FieldOwnProps & NumericProp & Omit<ComponentProps<"input">, "name" | "className">;
 
 /** Campo de texto con etiqueta en membrete, borde de tinta suave y error debajo. */
-export function Field({ label, error, hint, className, numeric, ...input }: InputFieldProps) {
-  const id = input.id ?? input.name;
+export function Field({ label, error, hint, className, numeric, mono, ...input }: InputFieldProps) {
+  const id = useFieldId(input.id, input.name);
   return (
     <FieldFrame id={id} label={label} error={error} hint={hint} required={input.required} className={className}>
       <input
@@ -72,7 +82,12 @@ export function Field({ label, error, hint, className, numeric, ...input }: Inpu
         id={id}
         aria-invalid={error ? true : undefined}
         aria-describedby={describedBy(id, error, hint)}
-        className={cx(CONTROL, "h-11", (numeric || input.type === "number") && "figures text-right")}
+        className={cx(
+          CONTROL,
+          "h-11",
+          (numeric || input.type === "number") && "figures text-right",
+          mono && "figures",
+        )}
       />
     </FieldFrame>
   );
@@ -82,7 +97,7 @@ type SelectFieldProps = FieldOwnProps & Omit<ComponentProps<"select">, "name" | 
 
 /** Desplegable con el mismo aspecto que `Field`. Pasa las `<option>` como hijos. */
 export function SelectField({ label, error, hint, className, children, ...select }: SelectFieldProps) {
-  const id = select.id ?? select.name;
+  const id = useFieldId(select.id, select.name);
   return (
     <FieldFrame id={id} label={label} error={error} hint={hint} required={select.required} className={className}>
       <div className="relative">
@@ -108,7 +123,7 @@ type TextareaFieldProps = FieldOwnProps & Omit<ComponentProps<"textarea">, "name
 
 /** Área de texto con el mismo aspecto que `Field`. */
 export function TextareaField({ label, error, hint, className, rows = 4, ...textarea }: TextareaFieldProps) {
-  const id = textarea.id ?? textarea.name;
+  const id = useFieldId(textarea.id, textarea.name);
   return (
     <FieldFrame id={id} label={label} error={error} hint={hint} required={textarea.required} className={className}>
       <textarea

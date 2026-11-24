@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { Suspense } from "react";
-import { MainNav } from "@/components/main-nav";
+import { MainNav, NavLinks } from "@/components/main-nav";
 import { UserMenu } from "@/components/user-menu";
 
 export default function PrivateLayout({ children }: { children: React.ReactNode }) {
@@ -19,7 +19,9 @@ export default function PrivateLayout({ children }: { children: React.ReactNode 
           </Suspense>
         </div>
         <div className="rule-thick">
-          <MainNav />
+          <Suspense fallback={<NavLinks pathname={null} />}>
+            <MainNav />
+          </Suspense>
         </div>
       </header>
 

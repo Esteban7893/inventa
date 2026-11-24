@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { formatCents, parseEuros } from "@/lib/domain/money";
+import { formatCents, formatEurosInput, parseEuros } from "@/lib/domain/money";
 
 const NBSP = " ";
 
@@ -107,5 +107,35 @@ describe("parseEuros", () => {
 
   it("devuelve null si el importe es demasiado grande", () => {
     expect(parseEuros("99999999999999999999")).toBeNull();
+  });
+});
+
+describe("formatEurosInput", () => {
+  it("escribe el importe con coma decimal y sin símbolo, listo para un campo", () => {
+    expect(formatEurosInput(1250)).toBe("12,50");
+    expect(formatEurosInput(1200)).toBe("12,00");
+  });
+
+  it("escribe cero y céntimos sueltos", () => {
+    expect(formatEurosInput(0)).toBe("0,00");
+    expect(formatEurosInput(5)).toBe("0,05");
+    expect(formatEurosInput(99)).toBe("0,99");
+  });
+
+  it("no agrupa los miles", () => {
+    expect(formatEurosInput(123456)).toBe("1234,56");
+    expect(formatEurosInput(2147483647)).toBe("21474836,47");
+  });
+
+  it("vuelve a dar los mismos céntimos al leerlo con parseEuros", () => {
+    for (const cents of [0, 5, 99, 100, 1250, 123456, 2147483647]) {
+      expect(parseEuros(formatEurosInput(cents))).toBe(cents);
+    }
+  });
+
+  it("rechaza importes negativos o que no son céntimos enteros", () => {
+    expect(() => formatEurosInput(-1)).toThrow(RangeError);
+    expect(() => formatEurosInput(12.5)).toThrow(RangeError);
+    expect(() => formatEurosInput(Number.NaN)).toThrow(RangeError);
   });
 });
