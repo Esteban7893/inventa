@@ -46,7 +46,7 @@ Encargo completo, autocontenido, en `docs/tareas/produccion-bloques-1-y-2.md`
 - [x] **T11 — Consultas que escalan.** Paginación, agregados del panel en SQL, índices.
 - [x] **T12 — Cabeceras de seguridad.** HSTS, CSP (primero report-only) y compañía.
 - [x] **T13 — Pedidos idempotentes.** Clave de idempotencia en `crear_pedido`.
-- [ ] **T14 — Movimientos de stock.** Tabla de auditoría alimentada por triggers.
+- [x] **T14 — Movimientos de stock.** Tabla de auditoría alimentada por triggers.
 - [ ] **T15 — Endurecer el acceso.** Ajustes de Auth que hace el humano, documentados.
 
 ## Decisiones del orquestador
@@ -169,6 +169,20 @@ Encargo completo, autocontenido, en `docs/tareas/produccion-bloques-1-y-2.md`
   #22, #26 y #27 lo comprueban). **Límite conocido:** un cambio de stock hecho como `postgres` fuera
   de las funciones (editor de Supabase, SQL a mano) no deja movimiento; cualquier función `security
   definer` nueva que cambie el stock tiene que registrar el suyo.
+- **T14 — fase 2 (rondas 2 y 3).** La r2 suspendió por D18: con un total múltiplo exacto del tamaño
+  de página, la página siguiente a la última daba 200 con 0 filas (PostgREST solo devuelve `PGRST103`
+  si el desplazamiento es mayor que el total) y la ficha mostraba «Aún no hay movimientos» y «Página
+  2 de 1». Decisión: `isPageOutOfRange` en `listing.ts` también para productos y clientes, que tenían
+  el mismo defecto con 50 filas. La r3 aprobó. Después, el orquestador aplicó
+  `20261124205448_indice_movimientos_stock_pedido.sql`: pgTAP 01–07 en verde contra el remoto (07
+  53/53), advisors de rendimiento sin avisos y de seguridad solo los conocidos (las tres funciones
+  `security definer` de pedidos y la protección de contraseñas filtradas, que es T15); los tipos no
+  cambian. **Quedan abiertas** (notas de r2/r3, no bloquean): en `/clientes` a 375 px, el
+  `sr-only` «Sin teléfono» (y quizá «Sin SKU» en productos y panel) ensancha el documento porque
+  ninguna celda es `relative`; el test 1 de `e2e/movimientos.spec.ts` recorre todas las páginas de
+  un producto cuyos movimientos solo crecen con cada ejecución (se reinicia al recargar el seed) y
+  no llega al caso del límite; el ancla `#movimientos` no salta en carga directa por el streaming; y
+  07#03 puede volver a `set_eq` ahora que el índice está aplicado.
 - **T9 — ejecución de pgTAP sin Docker.** `supabase test db --linked` también invoca un
   contenedor Docker (`pg_prove`) y falla en máquinas sin Docker en marcha. Decisión: habilitar
   `pgtap` en el esquema `extensions` mediante migración (`supabase migration new`), escribir los
