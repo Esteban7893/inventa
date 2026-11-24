@@ -86,6 +86,13 @@ Encargo completo, autocontenido, en `docs/tareas/produccion-bloques-1-y-2.md`
   `search_path = ''`, pero le exigen `search_path` fijo y que nadie de la API pueda ejecutarla.
   `npm run test:db` no entra en CI de momento: necesitaría un token de Supabase como secreto de
   GitHub, y eso lo decide el humano.
+- **T10 (ronda 3) — qué significa «dejar los datos como estaban» (D27).** Los pedidos no se pueden
+  borrar por diseño (D7), así que un test E2E que crea un pedido lo cancela: el stock vuelve a su
+  valor y el pedido queda cancelado en el listado. Por eso el seed se recarga antes de cada
+  despliegue y, si algún día se activan los E2E en CI, se recomienda un usuario E2E propio. En CI
+  el artefacto de Playwright solo lleva capturas (el informe HTML y las trazas guardarían la
+  contraseña del usuario E2E en un repositorio público), y el job E2E tiene su propio grupo de
+  concurrencia sin cancelación; `Calidad` y `Secretos` siguen cancelando las ejecuciones viejas.
 - **T9 — ejecución de pgTAP sin Docker.** `supabase test db --linked` también invoca un
   contenedor Docker (`pg_prove`) y falla en máquinas sin Docker en marcha. Decisión: habilitar
   `pgtap` en el esquema `extensions` mediante migración (`supabase migration new`), escribir los

@@ -263,8 +263,13 @@ Hace falta Node.js 22 o posterior, la CLI de Supabase y un proyecto de Supabase.
    `npx playwright install chromium` y define `E2E_EMAIL` y `E2E_PASSWORD` (en `.env.local` o en
    el entorno; nunca en el código). Las pruebas comprueban redirección y login, creación y
    cancelación de pedidos con devolución de stock, rechazo por falta de stock, reinicio de
-   formularios cancelados y ausencia de scroll horizontal a 375 px. Cada test cancela los pedidos
-   que crea para devolver el stock a su valor inicial.
+   formularios cancelados y ausencia de scroll horizontal a 375 px. Necesitan los datos de
+   demostración (al menos dos productos, uno con stock 2 o más, un cliente y un pedido): si faltan,
+   fallan con un mensaje que lo dice. Cada test cancela al terminar los pedidos que haya creado,
+   también si falla a medias, y el stock vuelve a su valor; el pedido cancelado sí se queda en el
+   listado (ver «Antes de activar los tests E2E en CI»). El informe HTML local
+   (`playwright-report/`, ignorado por git) incluye lo tecleado en el login, contraseña incluida:
+   no lo compartas.
 
 ## Producción
 
@@ -274,7 +279,26 @@ Cada pull request y cada push a `main` ejecutan [`.github/workflows/ci.yml`](.gi
 
 - **Calidad:** instala dependencias con `npm ci` (Node.js 22 LTS) y ejecuta `npm run lint` (falla también con avisos), `npm run typecheck`, `npm test` y `npm run build` con valores ficticios para las variables públicas de Supabase.
 - **Secretos:** escanea **todo el historial** de git con la CLI de Gitleaks (versión fijada y comprobada por SHA-256 en el workflow; reglas por defecto más `.gitleaks.toml`) para evitar que entren credenciales en el repositorio. Para actualizar Gitleaks se cambian a mano `GITLEAKS_VERSION` y `GITLEAKS_SHA256` en `ci.yml`.
-- **E2E (Playwright) (opcional):** solo se ejecuta si están configurados en GitHub Secrets `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`, `E2E_EMAIL` y `E2E_PASSWORD`. Si existen, instala Chromium, compila la app con `npm run build` y lanza `npm run test:e2e` contra `npm run start`. Si faltan, el job se omite sin bloquear el PR.
+- **E2E (Playwright) (opcional):** solo se ejecuta si están configurados en GitHub Secrets `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`, `E2E_EMAIL` y `E2E_PASSWORD`. Si existen, instala Chromium, compila la app con `npm run build` y lanza `npm run test:e2e` contra `npm run start`. Si faltan, el job se omite sin bloquear el PR. Solo corre un E2E a la vez en todo el repositorio y una ejecución nueva no lo cancela a medias; si falla, sube como artefacto solo las capturas de pantalla (no el informe HTML ni las trazas, que guardarían la contraseña tecleada y las cookies de sesión).
+
+#### Antes de activar los tests E2E en CI
+
+Los secretos los añade el humano en GitHub (*Settings → Secrets and variables → Actions*). Antes,
+ten en cuenta que los tests corren contra la base de datos de producción:
+
+- **Cada ejecución deja pedidos cancelados.** El test de crear y cancelar un pedido deja uno en
+  estado *cancelado* (dos si CI lo reintenta). El stock vuelve a su valor, pero el pedido sale en
+  el listado y cuenta en el panel. Con el usuario de prueba, los evaluadores lo verían.
+- **Lo recomendable es un usuario E2E distinto**, con sus propios datos (RLS lo aísla del usuario
+  de prueba): créalo en *Authentication → Users* y pon su email y contraseña en `E2E_EMAIL` y
+  `E2E_PASSWORD`. `supabase/seed_demo.sql` está escrito para `prueba@inventa.test`, así que, para
+  cargarle datos, ejecuta una copia local de ese script con el email cambiado (o crea a mano en la
+  app al menos dos productos, uno con stock 2 o más, un cliente y un pedido). Puedes volver a
+  ejecutar esa copia de vez en cuando para quitar los pedidos cancelados.
+- **Si usas el usuario de prueba**, recarga los datos de demostración después de las ejecuciones
+  (`supabase db query --linked -f supabase/seed_demo.sql`) para que no queden pedidos de los tests.
+- Los logs de GitHub ocultan el valor de los secretos. Las capturas que se suben si un test falla
+  no muestran la contraseña (el campo la tapa), pero sí los datos de la pantalla.
 
 `main` está protegida en GitHub: para los cambios normales el pull request es obligatorio, con los checks `Calidad` y `Secretos` en verde y la rama al día, y no se admiten force-push ni borrar la rama. La protección no se aplica a los administradores del repositorio (`enforce_admins` desactivado), que podrían saltársela. El job E2E no es un check obligatorio porque solo corre si existen sus secretos.
 

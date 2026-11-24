@@ -27,14 +27,16 @@ export default defineConfig({
   workers: 1,
   forbidOnly: isCI,
   retries: isCI ? 1 : 0,
+  // En CI no hay informe HTML ni trazas: guardan el valor de cada `fill` (también la contraseña)
+  // y las cookies de sesión, y el repositorio es público. Los logs de GitHub ocultan los secretos.
   reporter: isCI
-    ? [["github"], ["html", { open: "never" }]]
+    ? [["github"], ["list"]]
     : [["list"], ["html", { open: "never" }]],
   use: {
     baseURL,
     locale: "es-ES",
     timezoneId: "Europe/Madrid",
-    trace: "on-first-retry",
+    trace: isCI ? "off" : "on-first-retry",
     screenshot: "only-on-failure",
   },
   projects: [
