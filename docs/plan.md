@@ -43,7 +43,7 @@ Encargo completo, autocontenido, en `docs/tareas/produccion-bloques-1-y-2.md`
 - [x] **T9 — Tests de base de datos.** pgTAP en `supabase/tests/` (las 27 verificaciones de T2,
   más acceso de `anon`, aislamiento, reglas y esquema de seguridad: 90 pruebas en 4 archivos).
 - [x] **T10 — Tests E2E.** Playwright en `e2e/` con los flujos críticos.
-- [ ] **T11 — Consultas que escalan.** Paginación, agregados del panel en SQL, índices.
+- [x] **T11 — Consultas que escalan.** Paginación, agregados del panel en SQL, índices.
 - [ ] **T12 — Cabeceras de seguridad.** HSTS, CSP (primero report-only) y compañía.
 - [ ] **T13 — Pedidos idempotentes.** Clave de idempotencia en `crear_pedido`.
 - [ ] **T14 — Movimientos de stock.** Tabla de auditoría alimentada por triggers.
@@ -124,7 +124,9 @@ Encargo completo, autocontenido, en `docs/tareas/produccion-bloques-1-y-2.md`
   vuelve a la primera página porque `pedidos_pagina` solo avanza hacia atrás en el tiempo. Los
   desplegables de nuevo pedido traen como mucho 500 clientes y 500 productos (`ORDER_FORM_OPTIONS`)
   con un aviso si hay más: es un límite funcional aceptado para el tamaño de esta app; un selector
-  con búsqueda en el servidor queda como mejora futura.
+  con búsqueda en el servidor queda como mejora futura. La búsqueda (`ilike`) distingue tildes y
+  un `*` actúa como comodín de PostgREST; se acepta porque solo afecta a las filas del propio
+  usuario (RLS) y no produce errores.
 - **T9 — ejecución de pgTAP sin Docker.** `supabase test db --linked` también invoca un
   contenedor Docker (`pg_prove`) y falla en máquinas sin Docker en marcha. Decisión: habilitar
   `pgtap` en el esquema `extensions` mediante migración (`supabase migration new`), escribir los
