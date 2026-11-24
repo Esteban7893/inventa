@@ -237,6 +237,20 @@ Hace falta Node.js 22 o posterior, la CLI de Supabase y un proyecto de Supabase.
    npm run db:types   # regenera src/lib/database.types.ts desde el esquema de Supabase
    ```
 
+   `npm run db:types` (`scripts/db-types.mjs`) solo lee el esquema con
+   `supabase gen types typescript` y necesita la sesión de la CLI (`supabase login`). Por
+   defecto lee el proyecto de producción (`uqupgywhmmdpjjenxywb`); para tu propio proyecto,
+   pasa su ref en la variable `SUPABASE_PROJECT_REF` (no se lee de `.env.local`):
+
+   ```bash
+   SUPABASE_PROJECT_REF=<ref-de-tu-proyecto> npm run db:types
+   ```
+
+   Si la CLI falla (sin sesión, ref equivocado, sin red), el archivo de tipos se queda como
+   estaba. El código no escribe a mano tipos de filas: `src/lib/types.ts` los deriva de
+   `Database` (`Tables<"productos">`…) y solo estrecha lo que Postgres no expresa, como
+   `estado` (texto con `check`) y `p_lineas` (`jsonb`).
+
    Los tests de base de datos viven en `supabase/tests/` (formato pgTAP envuelto en `begin; ... rollback;`,
    por lo que no dejan filas en ninguna tabla). `npm run test:db` ejecuta `supabase test db --linked`
    cuando Docker está activo y, si no hay Docker disponible, ejecuta cada archivo con

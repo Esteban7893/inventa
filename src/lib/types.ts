@@ -18,16 +18,11 @@ export type Order = Omit<Tables<"pedidos">, "estado"> & {
 export type OrderLine = Tables<"pedido_lineas">;
 
 /** Elemento del array `p_lineas` que recibe la función SQL `crear_pedido`. */
-export type CreateOrderLine = {
-  producto_id: string;
-  cantidad: number;
-};
+export type CreateOrderLine = Pick<OrderLine, "producto_id" | "cantidad">;
 
 type PublicFunctions = Database["public"]["Functions"];
 
-/** Argumentos de las funciones SQL, tal como se pasan a `supabase.rpc(...)`. */
+/** Argumentos de la función SQL `crear_pedido`, tal como se pasan a `supabase.rpc(...)`. */
 export type CreateOrderArgs = Omit<PublicFunctions["crear_pedido"]["Args"], "p_lineas"> & {
   p_lineas: CreateOrderLine[];
 };
-
-export type OrderIdArgs = PublicFunctions["enviar_pedido"]["Args"];
