@@ -84,6 +84,8 @@ Orquestador --tarea--> Develop --entrega--> Testing --informe--> Orquestador
 | T4 — Pedidos | [r1](docs/revisiones/T4-r1.md) | APROBADO | |
 | T5 — Panel y acabado | [r1](docs/revisiones/T5-r1.md) | APROBADO | |
 | T6 — Integración continua | [r1](docs/revisiones/T6-r1.md) | APROBADO | |
+| T6 — Integración continua | [r2](docs/revisiones/T6-r2.md) | SUSPENSO | Lista del README partida por el párrafo de protección de `main` (D23) |
+| T6 — Integración continua | [r3](docs/revisiones/T6-r3.md) | APROBADO | |
 | T7 — Migraciones con historial | [r1](docs/revisiones/T7-r1.md) | APROBADO | |
 | T8 — Tipos generados | [r1](docs/revisiones/T8-r1.md) | APROBADO | |
 | T9 — Tests de base de datos (pgTAP) | [r1](docs/revisiones/T9-r1.md) | APROBADO | |
