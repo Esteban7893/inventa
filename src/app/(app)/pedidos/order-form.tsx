@@ -1,11 +1,13 @@
 "use client";
 
-import { useId, useRef, useState, useTransition, type FormEvent, type ReactNode } from "react";
+import { unstable_rethrow } from "next/navigation";
+import { useEffect, useId, useRef, useState, useTransition, type FormEvent, type ReactNode } from "react";
 import { createOrder, type CreateOrderResult } from "@/app/(app)/pedidos/actions";
 import { ResetWhenHidden } from "@/components/reset-when-hidden";
 import { Button, ButtonLink } from "@/components/ui/button";
 import { Field, RequiredLegend, SelectField } from "@/components/ui/field";
 import { Notice } from "@/components/ui/notice";
+import { renewsIdempotencyKey, type SubmitOutcome } from "@/lib/domain/idempotency";
 import { formatCents } from "@/lib/domain/money";
 import { lineSubtotal, orderTotal, parseQuantity, type LineErrors, type PricedLine } from "@/lib/domain/order";
 import { orderInputErrors, orderInputSchema, type OrderInput, type OrderInputErrors } from "@/lib/domain/order-input";
@@ -33,9 +35,13 @@ type Feedback = {
   lineErrors: Record<number, LineErrors>;
 };
 
+const NO_RESPONSE =
+  "No hemos recibido respuesta y no sabemos si el pedido se ha guardado. Vuelve a pulsar «Crear pedido»: si ya se guardó, no se creará otro.";
+
 /**
  * Formulario de nuevo pedido. Al salir de la página (Next la conserva oculta) se vuelve a
- * montar limpio: al volver no reaparecen líneas ni errores de un pedido que no se guardó.
+ * montar limpio: al volver no reaparecen líneas ni errores de un pedido que no se guardó, y
+ * el formulario nuevo tiene también su propia clave de idempotencia.
  */
 export function OrderForm(props: OrderFormProps) {
   return (
@@ -43,6 +49,19 @@ export function OrderForm(props: OrderFormProps) {
       <OrderFormBody {...props} />
     </ResetWhenHidden>
   );
+}
+
+/**
+ * ¿Es una redirección de Next? Cuando `createOrder` crea el pedido redirige al albarán, y Next
+ * rechaza la promesa de la acción con esa redirección para que la gestione el router.
+ */
+function isNextNavigation(error: unknown): boolean {
+  try {
+    unstable_rethrow(error);
+    return false;
+  } catch {
+    return true;
+  }
 }
 
 function emptyRow(key: number): DraftRow {
@@ -104,6 +123,17 @@ function OrderFormBody({ customers, products }: OrderFormProps) {
   /** Lo que respondió la Server Action (p. ej. falta de stock), hasta el siguiente envío. */
   const [serverFeedback, setServerFeedback] = useState<Feedback | null>(null);
   const [pending, startTransition] = useTransition();
+  /**
+   * Clave de idempotencia (D30): una por montaje del formulario, creada en el navegador al
+   * montarse (no durante el render: en el servidor, `crypto.randomUUID()` cuenta como IO). Todos
+   * los envíos de este formulario la repiten hasta que `renewsIdempotencyKey` pide otra: un doble
+   * clic o un reintento sin respuesta devuelven el mismo pedido en vez de crear otro.
+   */
+  const idempotencyKey = useRef<string | null>(null);
+
+  useEffect(() => {
+    idempotencyKey.current = crypto.randomUUID();
+  }, []);
 
   const keys = rows.map((row) => row.key);
   const input: OrderInput = {
@@ -137,12 +167,37 @@ function OrderFormBody({ customers, products }: OrderFormProps) {
       return;
     }
 
+    idempotencyKey.current ??= crypto.randomUUID();
+    const submittedKey = idempotencyKey.current;
     const submittedKeys = keys;
-    startTransition(async () => {
-      const result: CreateOrderResult | undefined = await createOrder(input);
-      if (result && !result.ok) {
-        setServerFeedback(toFeedback(result, submittedKeys));
+
+    function finish(outcome: SubmitOutcome) {
+      if (renewsIdempotencyKey(outcome)) {
+        idempotencyKey.current = crypto.randomUUID();
       }
+    }
+
+    startTransition(async () => {
+      let result: CreateOrderResult | undefined;
+      try {
+        result = await createOrder(input, submittedKey);
+      } catch (error) {
+        if (isNextNavigation(error)) {
+          finish("created");
+          throw error;
+        }
+        // Sin respuesta: se conservan la clave y lo tecleado para poder reintentar sin duplicar.
+        finish("no-response");
+        setServerFeedback({ error: NO_RESPONSE, lineErrors: {} });
+        return;
+      }
+
+      if (result && !result.ok) {
+        finish(result.keyReused ? "key-reused" : "rejected");
+        setServerFeedback(toFeedback(result, submittedKeys));
+        return;
+      }
+      finish("created");
     });
   }
 

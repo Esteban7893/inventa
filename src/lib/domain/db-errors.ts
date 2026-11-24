@@ -21,7 +21,11 @@ const MESSAGES_BY_CODE: Record<string, string> = {
   ESTADO_INVALIDO: "Solo se pueden enviar o cancelar pedidos pendientes.",
   CURSOR_INVALIDO: "El enlace de esta página de pedidos no es válido. Vuelve a la primera página.",
   FILTRO_INVALIDO: "Ese filtro de estado no existe. Elige uno de la lista.",
+  CLAVE_REUTILIZADA:
+    "Con este envío ya se guardó un pedido con otros datos. Revisa la lista de pedidos antes de seguir: si quieres otro pedido, vuelve a pulsar «Crear pedido».",
 };
+
+const REUSED_KEY = "CLAVE_REUTILIZADA";
 
 /** Violación de clave ajena al borrar (`on delete restrict`). */
 const FOREIGN_KEY_VIOLATION = "23503";
@@ -67,4 +71,12 @@ export function dbErrorMessage(error: DbErrorInfo): string {
   }
 
   return GENERIC_MESSAGE;
+}
+
+/**
+ * `crear_pedido` rechazó la clave de idempotencia porque ya hay un pedido con esa clave y otro
+ * contenido (otro cliente u otras líneas). El formulario usa entonces una clave nueva.
+ */
+export function isReusedKeyError(error: DbErrorInfo): boolean {
+  return (error.message ?? "").trim() === REUSED_KEY;
 }

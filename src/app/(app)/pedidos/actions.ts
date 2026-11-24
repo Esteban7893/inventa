@@ -3,19 +3,24 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
-import { dbErrorMessage } from "@/lib/domain/db-errors";
+import { dbErrorMessage, isReusedKeyError } from "@/lib/domain/db-errors";
+import { idempotencyKeySchema } from "@/lib/domain/idempotency";
 import { orderInputErrors, orderInputSchema, type OrderInputErrors } from "@/lib/domain/order-input";
 import type { ActionResult } from "@/lib/forms";
 import { createClient } from "@/lib/supabase/server";
 
-/** Resultado de `createOrder` cuando no se crea el pedido (si se crea, redirige al albarán). */
-export type CreateOrderResult = { ok: false } & OrderInputErrors;
+/**
+ * Resultado de `createOrder` cuando no se crea el pedido (si se crea, redirige al albarán).
+ * `keyReused`: la clave ya se usó con otro contenido; el formulario usará una nueva.
+ */
+export type CreateOrderResult = { ok: false; keyReused?: true } & OrderInputErrors;
 
 const orderIdSchema = z.uuid();
 
 const SESSION_EXPIRED = "Tu sesión ha caducado. Vuelve a entrar.";
 const NOT_FOUND = "El pedido no existe o ya no está disponible.";
 const GENERIC = "No se ha podido completar la operación. Inténtalo de nuevo.";
+const RELOAD = "No se ha podido enviar el pedido. Recarga la página e inténtalo de nuevo.";
 
 /** Lo que cambia al crear o cancelar un pedido: pedidos, su albarán, el stock de los productos y el panel. */
 function revalidateOrders(orderId: string) {
@@ -31,8 +36,12 @@ function revalidateOrders(orderId: string) {
  * Crea un pedido con `crear_pedido`. Solo envía el cliente y, por línea, el producto y la
  * cantidad: los precios y el total los pone la base de datos, que también comprueba el stock
  * y lo descuenta en la misma operación. Si todo va bien, redirige al albarán del pedido.
+ *
+ * `idempotencyKey` es la clave del envío (un uuid v4 que crea el formulario). Es obligatoria:
+ * si el mismo envío llega dos veces (doble clic, reintento tras perder la respuesta), la base
+ * de datos devuelve el mismo pedido en vez de crear otro y descontar el stock otra vez (D30).
  */
-export async function createOrder(input: unknown): Promise<CreateOrderResult> {
+export async function createOrder(input: unknown, idempotencyKey: unknown): Promise<CreateOrderResult> {
   const supabase = await createClient();
   const {
     data: { user },
@@ -46,9 +55,18 @@ export async function createOrder(input: unknown): Promise<CreateOrderResult> {
     return { ok: false, ...orderInputErrors(parsed.error) };
   }
 
-  const { data, error } = await supabase.rpc("crear_pedido", parsed.data);
+  // Sin una clave válida no se llama a la base de datos: un pedido sin clave no sería idempotente.
+  const key = idempotencyKeySchema.safeParse(idempotencyKey);
+  if (!key.success) {
+    return { ok: false, error: RELOAD, lineErrors: [] };
+  }
+
+  const { data, error } = await supabase.rpc("crear_pedido", { ...parsed.data, p_idempotency_key: key.data });
   if (error) {
-    return { ok: false, error: dbErrorMessage(error), lineErrors: [] };
+    const message = dbErrorMessage(error);
+    return isReusedKeyError(error)
+      ? { ok: false, keyReused: true, error: message, lineErrors: [] }
+      : { ok: false, error: message, lineErrors: [] };
   }
 
   const orderId = orderIdSchema.safeParse(data);

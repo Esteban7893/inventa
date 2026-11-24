@@ -94,6 +94,7 @@ export type Database = {
           enviado_at: string | null
           estado: string
           id: string
+          idempotency_key: string | null
           owner_id: string
           total_cents: number
         }
@@ -104,6 +105,7 @@ export type Database = {
           enviado_at?: string | null
           estado?: string
           id?: string
+          idempotency_key?: string | null
           owner_id?: string
           total_cents: number
         }
@@ -114,6 +116,7 @@ export type Database = {
           enviado_at?: string | null
           estado?: string
           id?: string
+          idempotency_key?: string | null
           owner_id?: string
           total_cents?: number
         }
@@ -167,7 +170,11 @@ export type Database = {
     Functions: {
       cancelar_pedido: { Args: { p_pedido_id: string }; Returns: undefined }
       crear_pedido: {
-        Args: { p_cliente_id: string; p_lineas: Json }
+        Args: {
+          p_cliente_id: string
+          p_idempotency_key?: string
+          p_lineas: Json
+        }
         Returns: string
       }
       enviar_pedido: { Args: { p_pedido_id: string }; Returns: undefined }

@@ -158,6 +158,33 @@ export async function readLatestOrder(page: Page): Promise<OrderRowInfo | null> 
   return { id: match[1], href, customer };
 }
 
+/**
+ * Pedidos más recientes que `latestBefore` (los de arriba en la primera página de `/pedidos`),
+ * del más nuevo al más antiguo. Sirve para contar cuántos pedidos ha creado un test.
+ */
+export async function readOrdersSince(page: Page, latestBefore: OrderRowInfo | null): Promise<OrderRowInfo[]> {
+  await gotoHydrated(page, "/pedidos");
+  await expect(page.getByRole("heading", { level: 1, name: "Pedidos" })).toBeVisible();
+
+  const rows = page.locator("table tbody tr");
+  const count = await rows.count();
+  const orders: OrderRowInfo[] = [];
+  for (let index = 0; index < count; index += 1) {
+    const row = rows.nth(index);
+    const href = (await row.locator("a").first().getAttribute("href")) ?? "";
+    const match = ORDER_HREF.exec(href);
+    if (!match) {
+      throw new Error(`Un pedido de /pedidos no enlaza a su albarán (href: "${href}")`);
+    }
+    if (match[1] === latestBefore?.id) {
+      break;
+    }
+    const customer = (await row.locator("td").nth(2).innerText()).trim();
+    orders.push({ id: match[1], href, customer });
+  }
+  return orders;
+}
+
 /** Cancela el pedido si sigue pendiente. Devuelve `true` si lo ha cancelado. */
 export async function cancelOrderIfPending(page: Page, orderHref: string): Promise<boolean> {
   await gotoHydrated(page, orderHref);
@@ -181,7 +208,7 @@ export async function cancelOrderIfPending(page: Page, orderHref: string): Promi
  */
 export class OrderCleanup {
   private readonly hrefs = new Set<string>();
-  private watched: { latestBeforeId: string | null; customer: string } | null = null;
+  private watched: { latestBefore: OrderRowInfo | null; customer: string } | null = null;
   private submission: Promise<void> = Promise.resolve();
 
   /**
@@ -190,7 +217,7 @@ export class OrderCleanup {
    * de que exista.
    */
   watchNewOrder(page: Page, latestBefore: OrderRowInfo | null, customer: string): void {
-    this.watched = { latestBeforeId: latestBefore?.id ?? null, customer };
+    this.watched = { latestBefore, customer };
     this.submission = page
       .waitForRequest(
         (request) =>
@@ -213,10 +240,12 @@ export class OrderCleanup {
   async run(page: Page): Promise<void> {
     if (this.watched) {
       await this.submission;
-      // Por si el pedido llegó a crearse pero el test falló antes de leer su URL.
-      const latest = await readLatestOrder(page);
-      if (latest && latest.id !== this.watched.latestBeforeId && latest.customer === this.watched.customer) {
-        this.hrefs.add(latest.href);
+      // Por si algún pedido llegó a crearse pero el test falló antes de leer su URL (todos los
+      // posteriores al último de antes del envío, por si un fallo creó más de uno).
+      for (const order of await readOrdersSince(page, this.watched.latestBefore)) {
+        if (order.customer === this.watched.customer) {
+          this.hrefs.add(order.href);
+        }
       }
     }
 
