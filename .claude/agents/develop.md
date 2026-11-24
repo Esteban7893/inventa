@@ -56,6 +56,9 @@ supabase/
   `loading.tsx` con `export { SectionLoading as default } from "@/components/section-loading";`.
   Sin él, Next 16 avisa de datos sin caché durante la navegación. El cliente de Supabase de
   servidor ya llama a `connection()`: no lo uses dentro de `"use cache"`.
+- **Formularios con estado de cliente** (`useActionState`, confirmaciones, líneas de pedido)
+  van dentro de `<ResetWhenHidden>` (`src/components/reset-when-hidden.tsx`): Next 16 conserva
+  ocultas las páginas visitadas y, sin él, errores y valores no guardados reaparecen al volver.
 - **Server first.** Lee datos en Server Components. Escribe con Server Actions
   (`"use server"`) en archivos `actions.ts` junto a la página. Client Components solo
   para interactividad real (formulario de líneas del pedido, confirmaciones).

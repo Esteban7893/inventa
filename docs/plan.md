@@ -20,7 +20,7 @@ la aprueba (informes en `docs/revisiones/`).
   fuentes Newsreader / IBM Plex Sans / IBM Plex Mono con `next/font`, y componentes base
   reutilizables (`PageHeader`, `Button`, `Field`, `Stamp`, `LedgerTable`). Rehacer con ese
   estilo lo existente de T1: login, layout privado, navegación, "Próximamente" y páginas de error.
-- [ ] **T3 — Productos y clientes.** Listado, alta, edición y borrado de productos (nombre,
+- [x] **T3 — Productos y clientes.** Listado, alta, edición y borrado de productos (nombre,
   SKU, precio, stock, stock mínimo; marca de "stock bajo") y de clientes (nombre, email,
   teléfono). Lógica `isLowStock` con tests.
 - [ ] **T4 — Pedidos.** Listado con estado y total; nuevo pedido (elegir cliente, añadir

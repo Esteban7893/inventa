@@ -2,6 +2,7 @@
 
 import { useActionState } from "react";
 import type { CustomerFormState } from "@/app/(app)/clientes/actions";
+import { ResetWhenHidden } from "@/components/reset-when-hidden";
 import { Button, ButtonLink } from "@/components/ui/button";
 import { Field, RequiredLegend } from "@/components/ui/field";
 import { Notice } from "@/components/ui/notice";
@@ -17,7 +18,19 @@ type CustomerFormProps = {
   pendingLabel: string;
 };
 
-export function CustomerForm({ action, defaults, submitLabel, pendingLabel }: CustomerFormProps) {
+/**
+ * Al salir de la página (Next la conserva oculta) se vuelve a montar limpio: al volver no
+ * reaparecen errores ni valores de un envío fallido o cancelado.
+ */
+export function CustomerForm(props: CustomerFormProps) {
+  return (
+    <ResetWhenHidden>
+      <CustomerFormBody {...props} />
+    </ResetWhenHidden>
+  );
+}
+
+function CustomerFormBody({ action, defaults, submitLabel, pendingLabel }: CustomerFormProps) {
   const [state, formAction, pending] = useActionState(action, null);
   const failed = state?.ok === false ? state : null;
   const values: CustomerFormValues = { ...defaults, ...failed?.values };

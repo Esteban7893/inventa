@@ -1,6 +1,7 @@
 "use client";
 
 import { useActionState, useId, useState } from "react";
+import { ResetWhenHidden } from "@/components/reset-when-hidden";
 import { Button } from "@/components/ui/button";
 import { Notice } from "@/components/ui/notice";
 import type { ActionResult } from "@/lib/forms";
@@ -19,8 +20,18 @@ type ConfirmDeleteProps = {
 /**
  * Borrado en dos pasos: el primer botón pide confirmación y solo el segundo borra.
  * "No, conservarlo" queda donde estaba el primer botón, para que un doble clic no borre.
+ * Al salir de la página (Next la conserva oculta) se vuelve a montar limpio: al volver no
+ * reaparece la confirmación abierta ni el aviso de un borrado rechazado.
  */
-export function ConfirmDelete({ action, label, question, description }: ConfirmDeleteProps) {
+export function ConfirmDelete(props: ConfirmDeleteProps) {
+  return (
+    <ResetWhenHidden>
+      <ConfirmDeleteBody {...props} />
+    </ResetWhenHidden>
+  );
+}
+
+function ConfirmDeleteBody({ action, label, question, description }: ConfirmDeleteProps) {
   const titleId = useId();
   const [confirming, setConfirming] = useState(false);
   const [state, formAction, pending] = useActionState(async (): Promise<ActionResult | null> => {
