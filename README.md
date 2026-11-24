@@ -84,6 +84,7 @@ Orquestador --tarea--> Develop --entrega--> Testing --informe--> Orquestador
 | T4 — Pedidos | [r1](docs/revisiones/T4-r1.md) | APROBADO | |
 | T5 — Panel y acabado | [r1](docs/revisiones/T5-r1.md) | APROBADO | |
 | T6 — Integración continua | [r1](docs/revisiones/T6-r1.md) | APROBADO | |
+| T7 — Migraciones con historial | [r1](docs/revisiones/T7-r1.md) | APROBADO | |
 
 ### Fallos que encontró Testing y cómo se corrigieron
 
@@ -154,7 +155,7 @@ Decisiones de seguridad:
 
 ## Cómo ejecutarlo en local
 
-Hace falta Node.js 22 o posterior y un proyecto de Supabase.
+Hace falta Node.js 22 o posterior, la CLI de Supabase y un proyecto de Supabase.
 
 1. **Dependencias y variables de entorno**
 
@@ -166,11 +167,20 @@ Hace falta Node.js 22 o posterior y un proyecto de Supabase.
    En `.env.local`, pon la URL del proyecto y la clave publicable de Supabase
    (*Project Settings → API*).
 
-2. **Base de datos.** En el editor SQL de Supabase, ejecuta las migraciones en orden:
-   1. `supabase/migrations/0001_esquema.sql`: tablas, RLS, políticas y funciones de pedidos.
-   2. `supabase/migrations/0002_revocar_rls_auto_enable.sql`: quita el permiso de ejecución de
-      `public.rls_auto_enable()`. Esa función solo existe si el proyecto tiene activado el
-      RLS automático; si no existe, sáltate este paso.
+2. **Base de datos.** Enlaza tu proyecto con la CLI de Supabase y aplica las migraciones de
+   `supabase/migrations/` para dejar el esquema y el historial sincronizados:
+
+   ```bash
+   supabase link --project-ref <ref-del-proyecto>
+   supabase db push --linked
+   ```
+
+   Las migraciones actuales son:
+
+   - `supabase/migrations/0001_esquema.sql`: tablas, RLS, políticas y funciones de pedidos.
+   - `supabase/migrations/0002_revocar_rls_auto_enable.sql`: quita el permiso de ejecución de
+     `public.rls_auto_enable()` (función que solo existe si el proyecto tiene activado el RLS
+     automático de Supabase).
 
 3. **Datos de demostración (opcional).** Crea primero el usuario `prueba@inventa.test` en
    *Authentication → Users*. Después ejecuta `supabase/seed_demo.sql` en el editor SQL, que
@@ -198,6 +208,39 @@ Cada pull request y cada push a `main` ejecutan [`.github/workflows/ci.yml`](.gi
 - **Secretos:** analiza el historial del PR o del push con Gitleaks (`.gitleaks.toml`) para evitar que entren credenciales en el repositorio.
 
 Las actualizaciones de dependencias de `npm` y `github-actions` se revisan cada semana mediante [`.github/dependabot.yml`](.github/dependabot.yml), agrupando las versiones menores y de corrección.
+
+### Migraciones
+
+El historial de esquema se gestiona exclusivamente con la CLI de Supabase (`supabase_migrations.schema_migrations`). **Nunca se ejecuta SQL suelto contra producción** desde el editor SQL ni mediante consultas ad hoc.
+
+Flujo obligatorio para cualquier cambio de esquema:
+
+1. **Enlazar el proyecto** (una vez por entorno local; la CLI pedirá la contraseña de la base de datos):
+
+   ```bash
+   supabase link --project-ref uqupgywhmmdpjjenxywb
+   ```
+
+2. **Crear la migración** en una rama de trabajo:
+
+   ```bash
+   supabase migration new <nombre>
+   ```
+
+3. **Revisar en PR y comprobar antes de aplicar** que el historial local y remoto coinciden y qué cambios se van a ejecutar:
+
+   ```bash
+   supabase migration list --linked
+   supabase db push --linked --dry-run
+   ```
+
+4. **Aplicar la migración** una vez revisada:
+
+   ```bash
+   supabase db push --linked
+   ```
+
+Respecto a entornos, actualmente Inventa trabaja contra un único proyecto de Supabase; si se separa un entorno de pruebas o preproducción, el mismo flujo se aplica enlazando cada proyecto con su `--project-ref` antes de subir cambios a producción. De forma opcional, se puede añadir un workflow manual (`workflow_dispatch`) en GitHub Actions para ejecutar `supabase db push` bajo demanda —nunca automático en cada push—, lo que requeriría configurar los secretos `SUPABASE_ACCESS_TOKEN` y `SUPABASE_DB_PASSWORD` en GitHub Secrets.
 
 ### Conectar Vercel con GitHub (previews por PR)
 

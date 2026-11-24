@@ -37,7 +37,7 @@ Encargo completo, autocontenido, en `docs/tareas/produccion-bloques-1-y-2.md`
 
 - [x] **T6 — Integración continua.** GitHub Actions (lint, tipos, tests, build, gitleaks),
   Dependabot, `main` protegida (con confirmación del humano).
-- [ ] **T7 — Migraciones con historial.** `supabase link` + `migration repair` de 0001/0002;
+- [x] **T7 — Migraciones con historial.** `supabase link` + `migration repair` de 0001/0002;
   a partir de aquí solo `supabase db push`.
 - [ ] **T8 — Tipos generados.** `supabase gen types` → `src/lib/database.types.ts`.
 - [ ] **T9 — Tests de base de datos.** pgTAP en `supabase/tests/` (las 27 verificaciones de T2).
