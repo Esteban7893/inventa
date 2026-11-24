@@ -51,6 +51,8 @@ async function saveProduct(id: string | null, formData: FormData): Promise<Produ
   }
 
   revalidatePath("/productos");
+  // La ficha muestra el stock y sus movimientos (un cambio de stock deja un ajuste).
+  revalidatePath("/productos/[id]", "page");
   revalidatePath("/panel");
   redirect("/productos");
 }

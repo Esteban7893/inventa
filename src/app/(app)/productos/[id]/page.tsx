@@ -3,11 +3,13 @@ import { notFound } from "next/navigation";
 import { cache } from "react";
 import { z } from "zod";
 import { deleteProduct, updateProduct } from "@/app/(app)/productos/actions";
+import { StockMovements } from "@/app/(app)/productos/[id]/stock-movements";
 import { ProductForm } from "@/app/(app)/productos/product-form";
 import { ConfirmDelete } from "@/components/confirm-delete";
 import { PageHeader } from "@/components/ui/page-header";
 import { Stamp } from "@/components/ui/stamp";
 import { requireUser } from "@/lib/auth";
+import { parsePage, type SearchParamValue } from "@/lib/domain/listing";
 import { formatEurosInput } from "@/lib/domain/money";
 import { isLowStock } from "@/lib/domain/stock";
 import { createClient } from "@/lib/supabase/server";
@@ -16,6 +18,8 @@ import type { Product } from "@/lib/types";
 type ProductDetail = Pick<Product, "id" | "nombre" | "sku" | "precio_cents" | "stock" | "stock_minimo">;
 
 type Props = { params: Promise<{ id: string }> };
+
+type PageProps = Props & { searchParams: Promise<{ [key: string]: SearchParamValue }> };
 
 /**
  * Carga el producto o lanza `notFound()`. Con `cache`, el título de la pestaña y la página
@@ -48,8 +52,9 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   return { title: product.nombre };
 }
 
-export default async function EditarProductoPage({ params }: Props) {
+export default async function EditarProductoPage({ params, searchParams }: PageProps) {
   const product = await loadProduct((await params).id);
+  const movementsPage = parsePage((await searchParams).pagina);
 
   // El formulario se vuelve a montar (key) si cambian los datos guardados: Next conserva
   // oculta la página ya visitada, con lo que se tecleó, y al volver mostraría valores viejos.
@@ -75,11 +80,12 @@ export default async function EditarProductoPage({ params }: Props) {
         submitLabel="Guardar cambios"
         pendingLabel="Guardando…"
       />
+      <StockMovements productId={product.id} page={movementsPage} />
       <ConfirmDelete
         action={deleteProduct.bind(null, product.id)}
         label="Borrar producto"
         question={`¿Seguro que quieres borrar «${product.nombre}»? No se puede deshacer.`}
-        description="El producto desaparecerá del libro. Si aparece en algún pedido no se podrá borrar."
+        description="El producto desaparecerá del libro con sus movimientos de stock. Si aparece en algún pedido no se podrá borrar."
       />
     </>
   );

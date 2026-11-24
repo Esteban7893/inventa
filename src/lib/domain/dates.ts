@@ -18,6 +18,13 @@ const dateTimeFormatter = new Intl.DateTimeFormat("es-ES", {
   timeZone: TIME_ZONE,
 });
 
+const timeFormatter = new Intl.DateTimeFormat("es-ES", {
+  hour: "2-digit",
+  minute: "2-digit",
+  hourCycle: "h23",
+  timeZone: TIME_ZONE,
+});
+
 /** Lee un texto ISO 8601. Lanza `RangeError` si está vacío o no es una fecha. */
 export function parseIsoDate(iso: string): Date {
   const date = new Date(iso);
@@ -35,4 +42,9 @@ export function formatDate(iso: string): string {
 /** Fecha y hora de un texto ISO 8601, p. ej. "2026-11-24T10:30:00Z" → "24/11/2026, 11:30". */
 export function formatDateTime(iso: string): string {
   return dateTimeFormatter.format(parseIsoDate(iso));
+}
+
+/** Hora de un texto ISO 8601, p. ej. "2026-11-24T10:30:00Z" → "11:30" (hora de Madrid). */
+export function formatTime(iso: string): string {
+  return timeFormatter.format(parseIsoDate(iso));
 }

@@ -79,4 +79,18 @@ begin
     from d where p.id = d.id;
   update public.pedido_lineas l set created_at = p.created_at
     from public.pedidos p where l.pedido_id = p.id and p.owner_id = v_uid;
+
+  -- Movimientos de stock (los dejan los triggers, con la fecha de esta transacción): los de un
+  -- pedido toman la fecha del pedido, y los de una cancelación, la de la cancelación. Las altas
+  -- de los productos (ajustes) van un día antes del pedido más antiguo, para que en la ficha el
+  -- stock inicial salga antes que los pedidos que lo descuentan. Solo cambian las fechas: los
+  -- deltas, y por tanto la suma de cada producto (su stock), quedan igual.
+  update public.movimientos_stock m
+     set created_at = case when m.motivo = 'cancelacion' then coalesce(p.cancelado_at, p.created_at)
+                           else p.created_at end
+    from public.pedidos p
+   where m.pedido_id = p.id and p.owner_id = v_uid and m.owner_id = v_uid;
+  update public.movimientos_stock m
+     set created_at = (select min(p.created_at) from public.pedidos p where p.owner_id = v_uid) - interval '1 day'
+   where m.owner_id = v_uid and m.motivo = 'ajuste';
 end $$;

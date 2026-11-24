@@ -147,8 +147,14 @@ declare
   v_ob uuid;
   v_n integer;
   v_estados text;
+  v_ajustable uuid;
+  v_mezcla1 uuid;
+  v_mezcla2 uuid;
+  v_antiguo uuid;
+  v_om uuid;
+  v_opre uuid;
 begin
-  return next extensions.plan(43);
+  return next extensions.plan(53);
 
   -- -------------------------------------------------------------------------
   -- Catálogo: columnas, restricciones, índices, RLS, permisos, funciones y triggers.
@@ -184,18 +190,22 @@ begin
     ],
     '02 - restricciones: delta <> 0, motivos, pedido_id segun motivo, signo segun motivo, una vez por pedido y producto, claves ajenas compuestas con owner_id en cascada'
   );
-  return next extensions.set_eq(
+  -- set_has y no set_eq: la migración 20261124205448 añade el índice de la clave ajena a pedidos
+  -- (lo comprueba el caso 44 para todas las claves ajenas de public).
+  return next extensions.set_has(
     $sql$
       select pg_catalog.pg_get_indexdef(i.indexrelid)
       from pg_catalog.pg_index i
       where i.indrelid = 'public.movimientos_stock'::regclass
     $sql$,
-    array[
-      'CREATE INDEX movimientos_stock_owner_id_idx ON public.movimientos_stock USING btree (owner_id)',
-      'CREATE UNIQUE INDEX movimientos_stock_pkey ON public.movimientos_stock USING btree (id)',
-      'CREATE INDEX movimientos_stock_producto_fecha_idx ON public.movimientos_stock USING btree (producto_id, owner_id, created_at DESC, id DESC)',
-      'CREATE UNIQUE INDEX movimientos_stock_una_vez_por_pedido ON public.movimientos_stock USING btree (pedido_id, producto_id, motivo)'
-    ],
+    $sql$
+      select unnest(array[
+        'CREATE INDEX movimientos_stock_owner_id_idx ON public.movimientos_stock USING btree (owner_id)',
+        'CREATE UNIQUE INDEX movimientos_stock_pkey ON public.movimientos_stock USING btree (id)',
+        'CREATE INDEX movimientos_stock_producto_fecha_idx ON public.movimientos_stock USING btree (producto_id, owner_id, created_at DESC, id DESC)',
+        'CREATE UNIQUE INDEX movimientos_stock_una_vez_por_pedido ON public.movimientos_stock USING btree (pedido_id, producto_id, motivo)'
+      ])
+    $sql$,
     '03 - indices: movimientos de un producto por fecha (producto_id, owner_id, created_at desc, id desc), owner_id y los de las claves'
   );
   return next extensions.is(
@@ -629,6 +639,146 @@ begin
     pg_temp.movs(v_jb, v_pb) || '|' || (select p.stock::text from public.productos p where p.id = v_pb),
     format('ajuste:20:-,pedido:-3:%s|17', v_ob),
     '43 - lo que hace A no cambia los movimientos ni el stock de B'
+  );
+
+  -- -------------------------------------------------------------------------
+  -- Índices de las claves ajenas (advisor unindexed_foreign_keys). Necesita la migración
+  -- 20261124205448_indice_movimientos_stock_pedido.sql: hasta que se aplique, este caso falla.
+  -- -------------------------------------------------------------------------
+
+  return next extensions.is_empty(
+    $sql$
+      select c.conrelid::regclass::text || '.' || c.conname
+      from pg_catalog.pg_constraint c
+      where c.contype = 'f'
+        and c.connamespace = 'public'::regnamespace
+        and not exists (
+          select 1
+          from pg_catalog.pg_index i
+          where i.indrelid = c.conrelid
+            and (string_to_array(i.indkey::text, ' ')::smallint[])[1:cardinality(c.conkey)] = c.conkey
+        )
+    $sql$,
+    '44 - toda clave ajena de public tiene un indice cuyas primeras columnas son las suyas, en el mismo orden'
+  );
+
+  -- -------------------------------------------------------------------------
+  -- set_config dentro del propio update: tampoco oculta un ajuste.
+  -- -------------------------------------------------------------------------
+
+  v_ajustable := pg_temp.valor_de(v_ja, $sql$insert into public.productos (nombre, precio_cents, stock) values ('Ajustable', 100, 10) returning id$sql$)::uuid;
+  perform pg_temp.valor_de(v_ja, format(
+    $sql$update public.productos set stock = 12, nombre = nombre || left(set_config('inventa.origen_stock', 'funcion', true), 0) where id = %L returning id$sql$, v_ajustable));
+  perform pg_temp.valor_de(v_ja, format(
+    $sql$update public.productos set stock = 15, nombre = nombre || left(set_config('inventa.origen_stock', 'funcion', false), 0) where id = %L returning id$sql$, v_ajustable));
+  perform pg_temp.valor_de(v_ja, format(
+    $sql$update public.productos set stock = 14 where id = %L and set_config('inventa.origen_stock', 'funcion', true) = 'funcion' returning id$sql$, v_ajustable));
+  return next extensions.is(
+    pg_temp.valor_de(v_ja, format(
+      $sql$update public.productos set stock = 11 where id = %L returning set_config('inventa.origen_stock', 'funcion', true)$sql$, v_ajustable))
+      || '|' || pg_temp.movs(v_ja, v_ajustable),
+    'funcion|ajuste:10:-,ajuste:2:-,ajuste:3:-,ajuste:-1:-,ajuste:-3:-',
+    '45 - set_config(inventa.origen_stock, funcion) dentro del propio update (en SET, local o de sesion, en WHERE o en RETURNING) no oculta el ajuste'
+  );
+  return next extensions.is(
+    pg_temp.valor_de(v_ja, format(
+      $sql$with u as (
+             update public.productos
+             set stock = stock + 1 + length(set_config('inventa.origen_stock', 'funcion', true)) - 7
+             where id in (%L, %L) returning 1)
+           select count(*) from u$sql$, v_ajustable, v_molinillo))
+      || '|' || pg_temp.movs(v_ja, v_ajustable) || '|' || pg_temp.movs(v_ja, v_molinillo),
+    '2|ajuste:10:-,ajuste:2:-,ajuste:3:-,ajuste:-1:-,ajuste:-3:-,ajuste:1:-|ajuste:1:-,ajuste:1:-',
+    '46 - un update de varias filas con set_config en cada fila deja un ajuste por producto'
+  );
+
+  -- -------------------------------------------------------------------------
+  -- Upsert de PostgREST (insert ... on conflict (id) do update).
+  -- -------------------------------------------------------------------------
+
+  perform pg_temp.valor_de(v_ja, format(
+    $sql$insert into public.productos (id, nombre, precio_cents, stock) values (%L, 'Ajustable', 100, 20)
+         on conflict (id) do update set nombre = excluded.nombre, precio_cents = excluded.precio_cents, stock = excluded.stock
+         returning id$sql$, v_ajustable));
+  return next extensions.is(
+    pg_temp.movs(v_ja, v_ajustable),
+    'ajuste:10:-,ajuste:2:-,ajuste:3:-,ajuste:-1:-,ajuste:-3:-,ajuste:1:-,ajuste:8:-',
+    '47 - un upsert que cambia el stock de un producto que ya existe (12 -> 20) deja un ajuste con el cambio, no un alta'
+  );
+  perform pg_temp.valor_de(v_ja, format(
+    $sql$insert into public.productos (id, nombre, precio_cents, stock) values (%L, 'Ajustable', 100, 20)
+         on conflict (id) do update set stock = excluded.stock returning id$sql$, v_ajustable));
+  perform pg_temp.valor_de(v_ja, format(
+    $sql$insert into public.productos (id, nombre, precio_cents, stock) values (%L, 'Ajustable', 100, 99)
+         on conflict (id) do update set nombre = excluded.nombre returning id$sql$, v_ajustable));
+  return next extensions.is(
+    pg_temp.movs(v_ja, v_ajustable) || '|' || (select p.stock::text from public.productos p where p.id = v_ajustable),
+    'ajuste:10:-,ajuste:2:-,ajuste:3:-,ajuste:-1:-,ajuste:-3:-,ajuste:1:-,ajuste:8:-|20',
+    '48 - un upsert con el mismo stock, o que no actualiza el stock, no deja movimientos'
+  );
+  perform pg_temp.valor_de(v_ja, $sql$
+    insert into public.productos (nombre, precio_cents, stock) values ('Upsert nuevo', 100, 7)
+    on conflict (id) do update set stock = excluded.stock returning id$sql$);
+  return next extensions.is(
+    pg_temp.movs(v_ja, (select p.id from public.productos p where p.owner_id = v_a and p.nombre = 'Upsert nuevo')),
+    'ajuste:7:-',
+    '49 - un upsert que da de alta un producto nuevo con stock 7 deja un ajuste con el stock inicial'
+  );
+
+  -- -------------------------------------------------------------------------
+  -- Una sentencia con un CTE que mezcla un update directo y crear_pedido.
+  -- -------------------------------------------------------------------------
+
+  v_mezcla1 := pg_temp.valor_de(v_ja, $sql$insert into public.productos (nombre, precio_cents, stock) values ('Mezcla 1', 100, 5) returning id$sql$)::uuid;
+  v_mezcla2 := pg_temp.valor_de(v_ja, $sql$insert into public.productos (nombre, precio_cents, stock) values ('Mezcla 2', 100, 5) returning id$sql$)::uuid;
+  v_om := split_part(pg_temp.valor_de(v_ja, format(
+    $sql$with u as (update public.productos set stock = stock - 1 where id = %L returning 1)
+         select public.crear_pedido(%L, %L::jsonb)::text || '/' || (select count(*) from u)$sql$,
+    v_mezcla1, v_ca, jsonb_build_array(jsonb_build_object('producto_id', v_mezcla2, 'cantidad', 2)))), '/', 1)::uuid;
+  return next extensions.is(
+    pg_temp.movs(v_ja, v_mezcla1) || '|' || pg_temp.movs(v_ja, v_mezcla2),
+    format('ajuste:5:-,ajuste:-1:-|ajuste:5:-,pedido:-2:%s', v_om),
+    '50 - en una sentencia con un update directo (CTE) y crear_pedido, el update deja un ajuste y el pedido un movimiento pedido, sin mezclarse'
+  );
+  v_n := pg_temp.n_movs(v_a);
+  return next extensions.is(
+    pg_temp.sqlstate_de(v_ja, format(
+      $sql$with u as (update public.productos set stock = stock + 10 where id = %L returning 1)
+           select public.crear_pedido(%L, %L::jsonb)::text || '/' || (select count(*) from u)$sql$,
+      v_mezcla2, v_ca, jsonb_build_array(jsonb_build_object('producto_id', v_mezcla2, 'cantidad', 1))))
+      || '|' || (pg_temp.n_movs(v_a) - v_n)::text
+      || '|' || pg_temp.valor_de(v_ja, format('select stock from public.productos where id = %L', v_mezcla2)),
+    '27000|0|3',
+    '51 - si el CTE y el pedido tocan el mismo producto, la sentencia falla entera (27000) y no deja movimientos'
+  );
+
+  -- -------------------------------------------------------------------------
+  -- Cancelar un pedido creado antes de la migración: su línea no tiene movimiento pedido y el
+  -- saldo inicial ya lleva descontada su cantidad. Se simula como postgres: se borran los
+  -- movimientos del producto y se pone el saldo inicial que habría dejado la migración.
+  -- -------------------------------------------------------------------------
+
+  v_antiguo := pg_temp.valor_de(v_ja, $sql$insert into public.productos (nombre, precio_cents, stock) values ('Antiguo', 100, 10) returning id$sql$)::uuid;
+  v_opre := pg_temp.valor_de(v_ja, format(
+    'select public.crear_pedido(%L, %L::jsonb)', v_ca, jsonb_build_array(
+      jsonb_build_object('producto_id', v_antiguo, 'cantidad', 3))))::uuid;
+  delete from public.movimientos_stock where producto_id = v_antiguo;
+  insert into public.movimientos_stock (owner_id, producto_id, delta, motivo)
+  select p.owner_id, p.id, p.stock, 'ajuste' from public.productos p where p.id = v_antiguo;
+  perform pg_temp.valor_de(v_ja, format('select public.cancelar_pedido(%L)', v_opre));
+  return next extensions.is(
+    pg_temp.movs(v_ja, v_antiguo) || '|' || (select p.stock::text from public.productos p where p.id = v_antiguo),
+    format('ajuste:7:-,cancelacion:3:%s|10', v_opre),
+    '52 - cancelar un pedido anterior a la migracion (sin movimiento pedido) deja su cancelacion +3 y la suma vuelve a cuadrar con el stock (7 + 3 = 10)'
+  );
+
+  return next extensions.is_empty(
+    format($sql$
+      select p.id::text from public.productos p
+      where p.owner_id in (%L, %L)
+        and p.stock <> coalesce((select sum(m.delta) from public.movimientos_stock m where m.producto_id = p.id), 0)
+    $sql$, v_a, v_b),
+    '53 - con todos los casos anteriores, la suma de los deltas de cada producto de A y de B sigue siendo su stock'
   );
 
   return query select * from extensions.finish();
