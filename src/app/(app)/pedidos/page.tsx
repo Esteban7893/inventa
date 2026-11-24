@@ -9,17 +9,12 @@ import { PageHeader } from "@/components/ui/page-header";
 import { requireUser } from "@/lib/auth";
 import { formatDate } from "@/lib/domain/dates";
 import { formatCents } from "@/lib/domain/money";
-import { orderReference } from "@/lib/domain/order";
+import { orderReference, parseOrderStatus } from "@/lib/domain/order";
 import { createClient } from "@/lib/supabase/server";
-import type { Customer, Order, OrderLine, OrderStatus } from "@/lib/types";
+import type { Order, OrderStatus } from "@/lib/types";
 
 export const metadata: Metadata = {
   title: "Pedidos",
-};
-
-type OrderQueryRow = Pick<Order, "id" | "estado" | "total_cents" | "created_at"> & {
-  clientes: Pick<Customer, "nombre"> | null;
-  pedido_lineas: Pick<OrderLine, "cantidad">[];
 };
 
 type OrderRow = Pick<Order, "id" | "estado" | "total_cents" | "created_at"> & {
@@ -93,15 +88,15 @@ export default async function PedidosPage({
   const { data, error } = await supabase
     .from("pedidos")
     .select("id, estado, total_cents, created_at, clientes(nombre), pedido_lineas(cantidad)")
-    .order("created_at", { ascending: false })
-    .overrideTypes<OrderQueryRow[], { merge: false }>();
+    .order("created_at", { ascending: false });
 
   if (error) {
     throw new Error("No se han podido cargar los pedidos.");
   }
 
-  const orders: OrderRow[] = data.map(({ clientes, pedido_lineas, ...order }) => ({
+  const orders: OrderRow[] = data.map(({ clientes, pedido_lineas, estado, ...order }) => ({
     ...order,
+    estado: parseOrderStatus(estado),
     cliente: clientes?.nombre ?? "—",
     lineas: pedido_lineas.length,
     unidades: pedido_lineas.reduce((sum, line) => sum + line.cantidad, 0),

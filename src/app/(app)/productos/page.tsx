@@ -73,8 +73,7 @@ export default async function ProductosPage() {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("productos")
-    .select("id, nombre, sku, precio_cents, stock, stock_minimo")
-    .overrideTypes<Omit<ProductRow, "low">[], { merge: false }>();
+    .select("id, nombre, sku, precio_cents, stock, stock_minimo");
 
   if (error) {
     throw new Error("No se han podido cargar los productos.");

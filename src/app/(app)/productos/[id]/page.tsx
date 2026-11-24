@@ -32,7 +32,7 @@ const loadProduct = cache(async (id: string): Promise<ProductDetail> => {
     .from("productos")
     .select("id, nombre, sku, precio_cents, stock, stock_minimo")
     .eq("id", id)
-    .maybeSingle<ProductDetail>();
+    .maybeSingle();
 
   if (error) {
     throw new Error("No se ha podido cargar el producto.");

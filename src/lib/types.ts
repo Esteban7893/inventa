@@ -1,50 +1,21 @@
+import type { Database, Tables } from "@/lib/database.types";
+
 /**
- * Tipos de las filas de la base de datos (supabase/migrations/0001_esquema.sql).
+ * Tipos de las filas de la base de datos derivados de `database.types.ts` (`npm run db:types`).
  * Los importes van en céntimos (enteros) y las fechas llegan como texto ISO 8601.
  */
 
 export type OrderStatus = "pendiente" | "enviado" | "cancelado";
 
-export type Product = {
-  id: string;
-  owner_id: string;
-  nombre: string;
-  sku: string | null;
-  precio_cents: number;
-  stock: number;
-  stock_minimo: number;
-  created_at: string;
-};
+export type Product = Tables<"productos">;
 
-export type Customer = {
-  id: string;
-  owner_id: string;
-  nombre: string;
-  email: string | null;
-  telefono: string | null;
-  created_at: string;
-};
+export type Customer = Tables<"clientes">;
 
-export type Order = {
-  id: string;
-  owner_id: string;
-  cliente_id: string;
+export type Order = Omit<Tables<"pedidos">, "estado"> & {
   estado: OrderStatus;
-  total_cents: number;
-  created_at: string;
-  enviado_at: string | null;
-  cancelado_at: string | null;
 };
 
-export type OrderLine = {
-  id: string;
-  owner_id: string;
-  pedido_id: string;
-  producto_id: string;
-  cantidad: number;
-  precio_unit_cents: number;
-  created_at: string;
-};
+export type OrderLine = Tables<"pedido_lineas">;
 
 /** Elemento del array `p_lineas` que recibe la función SQL `crear_pedido`. */
 export type CreateOrderLine = {
@@ -52,12 +23,11 @@ export type CreateOrderLine = {
   cantidad: number;
 };
 
+type PublicFunctions = Database["public"]["Functions"];
+
 /** Argumentos de las funciones SQL, tal como se pasan a `supabase.rpc(...)`. */
-export type CreateOrderArgs = {
-  p_cliente_id: string;
+export type CreateOrderArgs = Omit<PublicFunctions["crear_pedido"]["Args"], "p_lineas"> & {
   p_lineas: CreateOrderLine[];
 };
 
-export type OrderIdArgs = {
-  p_pedido_id: string;
-};
+export type OrderIdArgs = PublicFunctions["enviar_pedido"]["Args"];

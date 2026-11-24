@@ -1,4 +1,4 @@
-import type { CreateOrderLine } from "@/lib/types";
+import type { CreateOrderLine, OrderStatus } from "@/lib/types";
 
 /** Cantidad máxima de una línea (el stock nunca pasa de 1.000.000.000, así que nunca alcanza). */
 export const MAX_LINE_QUANTITY = 1_000_000_000;
@@ -145,4 +145,20 @@ export function orderReference(id: string): string {
     throw new RangeError("El id del pedido es demasiado corto.");
   }
   return `Nº ${id.slice(0, REFERENCE_LENGTH).toUpperCase()}`;
+}
+
+/** Comprueba en tiempo de ejecución si un valor es uno de los estados válidos de un pedido. */
+export function isOrderStatus(value: unknown): value is OrderStatus {
+  return value === "pendiente" || value === "enviado" || value === "cancelado";
+}
+
+/**
+ * Estrecha el `estado` devuelto por Postgres (columna `text` con `check`) al tipo `OrderStatus`.
+ * Si llegase un valor inesperado, falla en el acto en lugar de propagarlo sin comprobar.
+ */
+export function parseOrderStatus(value: string): OrderStatus {
+  if (isOrderStatus(value)) {
+    return value;
+  }
+  throw new RangeError(`Estado de pedido no reconocido: ${value}`);
 }

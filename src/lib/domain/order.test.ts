@@ -1,9 +1,11 @@
 import { describe, expect, it } from "vitest";
 import {
+  isOrderStatus,
   lineSubtotal,
   MAX_LINE_QUANTITY,
   orderReference,
   orderTotal,
+  parseOrderStatus,
   parseQuantity,
   validateLines,
 } from "@/lib/domain/order";
@@ -215,5 +217,37 @@ describe("orderReference", () => {
   it("rechaza un id demasiado corto", () => {
     expect(() => orderReference("")).toThrow(RangeError);
     expect(() => orderReference("abc")).toThrow(RangeError);
+  });
+});
+
+describe("isOrderStatus", () => {
+  it("reconoce los tres estados válidos", () => {
+    expect(isOrderStatus("pendiente")).toBe(true);
+    expect(isOrderStatus("enviado")).toBe(true);
+    expect(isOrderStatus("cancelado")).toBe(true);
+  });
+
+  it("rechaza cadenas desconocidas, vacías o con mayúsculas", () => {
+    expect(isOrderStatus("")).toBe(false);
+    expect(isOrderStatus("PENDIENTE")).toBe(false);
+    expect(isOrderStatus(" pendiente ")).toBe(false);
+    expect(isOrderStatus("borrador")).toBe(false);
+    expect(isOrderStatus(null)).toBe(false);
+    expect(isOrderStatus(undefined)).toBe(false);
+    expect(isOrderStatus(0)).toBe(false);
+  });
+});
+
+describe("parseOrderStatus", () => {
+  it("devuelve el estado cuando es válido", () => {
+    expect(parseOrderStatus("pendiente")).toBe("pendiente");
+    expect(parseOrderStatus("enviado")).toBe("enviado");
+    expect(parseOrderStatus("cancelado")).toBe("cancelado");
+  });
+
+  it("lanza RangeError si el estado no está reconocido", () => {
+    expect(() => parseOrderStatus("")).toThrow(RangeError);
+    expect(() => parseOrderStatus("PENDIENTE")).toThrow(RangeError);
+    expect(() => parseOrderStatus("otro")).toThrow(RangeError);
   });
 });

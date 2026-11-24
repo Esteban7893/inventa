@@ -7,7 +7,6 @@ import { dbErrorMessage } from "@/lib/domain/db-errors";
 import { orderInputErrors, orderInputSchema, type OrderInputErrors } from "@/lib/domain/order-input";
 import type { ActionResult } from "@/lib/forms";
 import { createClient } from "@/lib/supabase/server";
-import type { CreateOrderArgs, OrderIdArgs } from "@/lib/types";
 
 /** Resultado de `createOrder` cuando no se crea el pedido (si se crea, redirige al albarán). */
 export type CreateOrderResult = { ok: false } & OrderInputErrors;
@@ -47,8 +46,7 @@ export async function createOrder(input: unknown): Promise<CreateOrderResult> {
     return { ok: false, ...orderInputErrors(parsed.error) };
   }
 
-  const args: CreateOrderArgs = parsed.data;
-  const { data, error } = await supabase.rpc("crear_pedido", args);
+  const { data, error } = await supabase.rpc("crear_pedido", parsed.data);
   if (error) {
     return { ok: false, error: dbErrorMessage(error), lineErrors: [] };
   }
@@ -76,8 +74,7 @@ async function changeStatus(fn: "enviar_pedido" | "cancelar_pedido", id: string)
     return { ok: false, error: NOT_FOUND };
   }
 
-  const args: OrderIdArgs = { p_pedido_id: parsed.data };
-  const { error } = await supabase.rpc(fn, args);
+  const { error } = await supabase.rpc(fn, { p_pedido_id: parsed.data });
   // También si se rechaza: p. ej. otra pestaña ya lo envió o canceló, y el albarán
   // tiene que enseñar su estado real junto al aviso.
   revalidateOrders(parsed.data);

@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { OrderForm, type OrderFormCustomer, type OrderFormProduct } from "@/app/(app)/pedidos/order-form";
+import { OrderForm } from "@/app/(app)/pedidos/order-form";
 import { ButtonLink } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { PageHeader } from "@/components/ui/page-header";
@@ -17,11 +17,8 @@ export default async function NuevoPedidoPage() {
 
   const supabase = await createClient();
   const [customersResult, productsResult] = await Promise.all([
-    supabase.from("clientes").select("id, nombre").overrideTypes<OrderFormCustomer[], { merge: false }>(),
-    supabase
-      .from("productos")
-      .select("id, nombre, sku, precio_cents, stock")
-      .overrideTypes<OrderFormProduct[], { merge: false }>(),
+    supabase.from("clientes").select("id, nombre"),
+    supabase.from("productos").select("id, nombre, sku, precio_cents, stock"),
   ]);
 
   if (customersResult.error || productsResult.error) {
