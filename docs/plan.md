@@ -45,7 +45,7 @@ Encargo completo, autocontenido, en `docs/tareas/produccion-bloques-1-y-2.md`
 - [x] **T10 — Tests E2E.** Playwright en `e2e/` con los flujos críticos.
 - [x] **T11 — Consultas que escalan.** Paginación, agregados del panel en SQL, índices.
 - [x] **T12 — Cabeceras de seguridad.** HSTS, CSP (primero report-only) y compañía.
-- [ ] **T13 — Pedidos idempotentes.** Clave de idempotencia en `crear_pedido`.
+- [x] **T13 — Pedidos idempotentes.** Clave de idempotencia en `crear_pedido`.
 - [ ] **T14 — Movimientos de stock.** Tabla de auditoría alimentada por triggers.
 - [ ] **T15 — Endurecer el acceso.** Ajustes de Auth que hace el humano, documentados.
 
@@ -142,6 +142,11 @@ Encargo completo, autocontenido, en `docs/tareas/produccion-bloques-1-y-2.md`
   aplicó `20261124163811_pedidos_idempotentes.sql` con `supabase db push` (queda una sola
   `crear_pedido(uuid, jsonb, uuid)`) y regeneró `database.types.ts`. Advisors: solo los avisos de
   siempre (las tres funciones `security definer` de D8 y la protección de contraseñas de T15).
+- **T13 (ronda 3) — vida de la clave.** La clave vive lo que dura el montaje del formulario: se
+  renueva tras crear el pedido o tras `CLAVE_REUTILIZADA`, y se conserva tras un error de la acción
+  o una falta de respuesta, para que reintentar sea seguro. Si la persona recarga la página tras
+  perder la respuesta, el reenvío lleva otra clave y podría duplicar el pedido; se acepta como límite
+  conocido (guardar la clave en el navegador queda como mejora futura).
 - **T9 — ejecución de pgTAP sin Docker.** `supabase test db --linked` también invoca un
   contenedor Docker (`pg_prove`) y falla en máquinas sin Docker en marcha. Decisión: habilitar
   `pgtap` en el esquema `extensions` mediante migración (`supabase migration new`), escribir los
