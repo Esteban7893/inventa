@@ -95,6 +95,7 @@ Orquestador --tarea--> Develop --entrega--> Testing --informe--> Orquestador
 | T9 — Tests de base de datos (pgTAP) | [r3](docs/revisiones/T9-r3.md) | APROBADO | |
 | T10 — Tests E2E (Playwright) | [r1](docs/revisiones/T10-r1.md) | SUSPENSO | `actions/upload-artifact@v4` en runtime `node20` en CI (D23) |
 | T10 — Tests E2E (Playwright) | [r2](docs/revisiones/T10-r2.md) | APROBADO | |
+| T10 — Tests E2E (Playwright) | [r3](docs/revisiones/T10-r3.md) | APROBADO | |
 
 ### Fallos que encontró Testing y cómo se corrigieron
 
