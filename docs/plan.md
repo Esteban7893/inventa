@@ -112,6 +112,12 @@ Encargo completo, autocontenido, en `docs/tareas/produccion-bloques-1-y-2.md`
   funcionando, el código de `main` no ordena por `nombre` en SQL y las tablas son pequeñas (el
   bloqueo al reconstruir los índices es breve). Los índices `*_owner_id_idx` antiguos se mantienen,
   aunque los nuevos los cubren, para no quitar nada en esta migración.
+- **T11 — migración aplicada.** Tras el APROBADO de la ronda 2 (solo base de datos), el orquestador
+  aplicó `20261124144658_consultas_escalables.sql` con `supabase db push` y regeneró
+  `database.types.ts`. Advisors: los avisos `authenticated_security_definer_function_executable` de
+  `crear_pedido`, `cancelar_pedido` y `enviar_pedido` son el diseño de D8 (ya estaban antes);
+  `auth_leaked_password_protection` es un ajuste de Auth que corresponde a T15; los 5 `unused_index`
+  son los índices nuevos, que la fase 2 empieza a usar. Ninguno vuelve a Develop.
 - **T9 — ejecución de pgTAP sin Docker.** `supabase test db --linked` también invoca un
   contenedor Docker (`pg_prove`) y falla en máquinas sin Docker en marcha. Decisión: habilitar
   `pgtap` en el esquema `extensions` mediante migración (`supabase migration new`), escribir los
