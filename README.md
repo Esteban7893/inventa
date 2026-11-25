@@ -63,6 +63,11 @@ en los push a `main`, que el informe de Playwright de CI habría publicado la co
 usuario E2E y que varios tests pgTAP podían pasar en falso. Los informes de la primera versión
 se conservan tal cual; la decisión está en [`docs/plan.md`](docs/plan.md).
 
+**T11–T14: migraciones en dos fases.** Las tareas que cambian la base de datos pasan dos veces
+por Testing. En la fase 1 se revisa solo la migración, probada dentro de transacciones que se
+deshacen. Con el APROBADO, el orquestador la aplica, pasa los advisors y regenera los tipos. En
+la fase 2 se revisa la app que la usa. T12 no toca la base de datos y tiene una sola fase.
+
 ### El bucle
 
 ```
@@ -107,6 +112,16 @@ Orquestador --tarea--> Develop --entrega--> Testing --informe--> Orquestador
 | T10 — Tests E2E (Playwright) | [r1](docs/revisiones/T10-r1.md) | SUSPENSO | Primera versión, hecha fuera del equipo: `actions/upload-artifact@v4` en runtime `node20` en CI (D23) |
 | T10 — Tests E2E (Playwright) | [r2](docs/revisiones/T10-r2.md) | APROBADO | Primera versión, hecha fuera del equipo (ver arriba) |
 | T10 — Tests E2E (Playwright) | [r3](docs/revisiones/T10-r3.md) | APROBADO | |
+| T11 — Consultas que escalan | [r1](docs/revisiones/T11-r1.md) | SUSPENSO | Fase 1 (migración): los tests de `pedidos_pagina` y del orden de stock bajo no detectaban mutantes de la paginación por cursor y del desempate (D26) |
+| T11 — Consultas que escalan | [r2](docs/revisiones/T11-r2.md) | APROBADO | Fase 1 (migración) |
+| T11 — Consultas que escalan | [r3](docs/revisiones/T11-r3.md) | APROBADO | Fase 2 (la app) |
+| T12 — Cabeceras de seguridad | [r1](docs/revisiones/T12-r1.md) | APROBADO | |
+| T13 — Pedidos idempotentes | [r1](docs/revisiones/T13-r1.md) | SUSPENSO | Fase 1 (migración): los tests no exigían que el bloqueo fuera una sentencia aparte ni que su clave fuera solo usuario y clave (D26) |
+| T13 — Pedidos idempotentes | [r2](docs/revisiones/T13-r2.md) | APROBADO | Fase 1 (migración) |
+| T13 — Pedidos idempotentes | [r3](docs/revisiones/T13-r3.md) | APROBADO | Fase 2 (la app) |
+| T14 — Movimientos de stock | [r1](docs/revisiones/T14-r1.md) | APROBADO | Fase 1 (migración) |
+| T14 — Movimientos de stock | [r2](docs/revisiones/T14-r2.md) | SUSPENSO | Fase 2 (la app): con un total múltiplo exacto de 20, la página siguiente a la última decía «Aún no hay movimientos» y «Página 2 de 1» (D18) |
+| T14 — Movimientos de stock | [r3](docs/revisiones/T14-r3.md) | APROBADO | Fase 2 (la app) |
 
 ### Fallos que encontró Testing y cómo se corrigieron
 
