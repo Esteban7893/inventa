@@ -1,5 +1,12 @@
 import { test as base, expect, type Page } from "@playwright/test";
-import { assertNoHorizontalOverflow, gotoHydrated, login, retryCleanup, withCleanupPage } from "./helpers";
+import {
+  assertNoHorizontalOverflow,
+  gotoHydrated,
+  login,
+  missingDemoData,
+  retryCleanup,
+  withCleanupPage,
+} from "./helpers";
 
 type TemporaryKind = "cliente" | "producto";
 
@@ -68,12 +75,17 @@ class RecordCleanup {
   }
 }
 
+// La limpieza tiene su propio tiempo (no el que le quede al test): un test que acaba justo
+// antes de su límite también tiene que poder borrar lo que ha creado.
 const test = base.extend<{ recordCleanup: RecordCleanup }>({
-  recordCleanup: async ({ page }, provide) => {
-    const cleanup = new RecordCleanup();
-    await provide(cleanup);
-    await cleanup.run(page);
-  },
+  recordCleanup: [
+    async ({ page }, provide) => {
+      const cleanup = new RecordCleanup();
+      await provide(cleanup);
+      await cleanup.run(page);
+    },
+    { timeout: 60_000 },
+  ],
 });
 
 test.describe("Sin scroll horizontal a 375 px con celdas vacías", () => {
@@ -107,8 +119,8 @@ test.describe("Sin scroll horizontal a 375 px con celdas vacías", () => {
     await expect(page).toHaveURL(/\/productos$/);
 
     const checks: ReadonlyArray<{ path: string; heading: string; row: string; hidden: string }> = [
-      // Se busca por el sufijo (corto y único): la página repite lo buscado fuera de la tabla, y
-      // ahí la palabra larga del nombre la ensancharía por otro motivo que este test no mide.
+      // Se busca por el sufijo (corto y único) para medir solo los textos ocultos: la palabra larga
+      // repetida fuera de la tabla la mide el test de palabras largas de abajo.
       { path: `/clientes?q=${suffix}`, heading: "Clientes", row: customerName, hidden: "Sin teléfono" },
       { path: `/productos?q=${suffix}`, heading: "Productos", row: productName, hidden: "Sin SKU" },
       { path: "/panel", heading: "Panel", row: productName, hidden: "Sin SKU" },
@@ -122,5 +134,98 @@ test.describe("Sin scroll horizontal a 375 px con celdas vacías", () => {
       await expect(row.getByText(check.hidden, { exact: true })).toHaveCount(1);
       await assertNoHorizontalOverflow(page, check.path, { soft: true });
     }
+  });
+});
+
+test.describe("Sin scroll horizontal a 375 px con palabras largas", () => {
+  test.use({ viewport: { width: 375, height: 812 } });
+
+  // Un nombre, un email o una búsqueda sin espacios (64 caracteres seguidos) que la página repite
+  // fuera de las tablas: títulos, estados vacíos, líneas de estado, confirmaciones y el albarán.
+  // Los nombres caben en la búsqueda (100 caracteres), que es como la limpieza los encuentra.
+  test("las palabras largas se parten en vez de ensanchar la página", async ({ page, recordCleanup }) => {
+    // Recorre once páginas: el triple del tiempo normal, para no quedarse corto con la base remota.
+    test.slow();
+    await login(page);
+
+    const suffix = Date.now().toString(36);
+    const customerWord = "ClienteConUnNombreMuyLargoSinEspaciosParaProbarElAnchoDeLaPagina";
+    const productWord = "ProductoConUnNombreMuyLargoSinEspaciosParaProbarElAnchoDeLaFicha";
+    const customerName = `ZZ-E2E ${customerWord} ${suffix}`;
+    const productName = `ZZ-E2E ${productWord} ${suffix}`;
+    const email = `zz.e2e.correo.electronico.muy.largo.sin.espacios.${suffix}@ejemplo-largo.test`;
+    const missingWord = `BusquedaSinResultadosConUnaPalabraMuyLargaSinNingunEspacio${suffix}`;
+
+    await gotoHydrated(page, "/clientes/nuevo");
+    await page.getByRole("textbox", { name: "Nombre" }).fill(customerName);
+    await page.getByRole("textbox", { name: "Email" }).fill(email);
+    recordCleanup.track("cliente", customerName);
+    await page.getByRole("button", { name: "Guardar cliente" }).click();
+    await expect(page).toHaveURL(/\/clientes$/);
+
+    // Sin stock: ningún otro test lo elegiría para un pedido si la limpieza fallara.
+    await gotoHydrated(page, "/productos/nuevo");
+    await page.getByRole("textbox", { name: "Nombre" }).fill(productName);
+    await page.getByRole("textbox", { name: "Precio (€)" }).fill("1");
+    await page.getByRole("textbox", { name: "Stock", exact: true }).fill("0");
+    await page.getByRole("textbox", { name: "Stock mínimo" }).fill("0");
+    recordCleanup.track("producto", productName);
+    await page.getByRole("button", { name: "Guardar producto" }).click();
+    await expect(page).toHaveURL(/\/productos$/);
+
+    const searches: ReadonlyArray<{ path: string; echo: string }> = [
+      { path: `/clientes?q=${missingWord}`, echo: `Ningún cliente coincide con «${missingWord}».` },
+      { path: `/productos?q=${missingWord}`, echo: `Ningún producto coincide con «${missingWord}».` },
+      { path: `/clientes?q=${customerWord}`, echo: `1 cliente con «${customerWord}»` },
+      { path: `/clientes?q=${encodeURIComponent(email)}`, echo: `1 cliente con «${email}»` },
+      { path: `/productos?q=${productWord}`, echo: `1 producto con «${productWord}»` },
+    ];
+    for (const search of searches) {
+      await gotoHydrated(page, search.path);
+      await expect(page.getByText(search.echo, { exact: true })).toBeVisible();
+      await assertNoHorizontalOverflow(page, search.path, { soft: true });
+    }
+
+    const records: ReadonlyArray<{ kind: TemporaryKind; name: string; word: string }> = [
+      { kind: "cliente", name: customerName, word: customerWord },
+      { kind: "producto", name: productName, word: productWord },
+    ];
+    for (const { kind, name, word } of records) {
+      const { path, deleteLabel } = LISTS[kind];
+      await gotoHydrated(page, `${path}?q=${word}`);
+      await page.getByRole("link", { name, exact: true }).click();
+      await expect(page.getByRole("heading", { level: 1, name })).toBeVisible();
+      await page.waitForLoadState("networkidle");
+      await assertNoHorizontalOverflow(page, `ficha de ${kind}`, { soft: true });
+      // La confirmación repite el nombre; se abre y se cierra sin borrar.
+      await page.getByRole("button", { name: deleteLabel }).click();
+      await expect(page.getByRole("alert").filter({ hasText: "¿Seguro que quieres borrar" })).toContainText(name);
+      await assertNoHorizontalOverflow(page, `confirmación de borrado de ${kind}`, { soft: true });
+      await page.getByRole("button", { name: "No, conservarlo" }).click();
+    }
+
+    await gotoHydrated(page, "/pedidos/nuevo");
+    await page.getByRole("combobox", { name: "Cliente" }).selectOption({ label: customerName });
+    await page.getByRole("combobox", { name: "Producto" }).selectOption({ label: `${productName} (agotado)` });
+    await assertNoHorizontalOverflow(page, "/pedidos/nuevo", { soft: true });
+
+    // Albarán: un pedido con el cliente temporal no se podría borrar (ni el cliente con él), así
+    // que se usa un pedido de los datos de demostración y se escribe el nombre y el email largos
+    // en el bloque del destinatario, solo en esta página del navegador.
+    await gotoHydrated(page, "/pedidos");
+    const orderHref = await page.locator("table tbody tr td:first-child a").first().getAttribute("href");
+    if (!orderHref) {
+      throw missingDemoData("no hay ningún pedido");
+    }
+    await gotoHydrated(page, orderHref);
+    const recipient = page.getByRole("region", { name: "Destinatario" }).locator("p");
+    await recipient.nth(0).evaluate((element, text) => {
+      element.textContent = text;
+    }, customerName);
+    await recipient.nth(1).evaluate((element, text) => {
+      element.textContent = text;
+    }, email);
+    await expect(recipient.nth(0)).toHaveText(customerName);
+    await assertNoHorizontalOverflow(page, "albarán con un destinatario largo", { soft: true });
   });
 });

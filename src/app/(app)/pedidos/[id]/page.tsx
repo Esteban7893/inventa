@@ -134,7 +134,9 @@ export default async function PedidoPage({ params }: Props) {
         actions={<OrderStatusStamp status={order.estado} />}
       />
 
-      <div className="grid gap-x-12 gap-y-8 sm:grid-cols-2">
+      {/* `grid-cols-1` en móvil: una columna implícita (`auto`) crecería con un nombre o un email
+          sin espacios del destinatario y ensancharía la página. */}
+      <div className="grid grid-cols-1 gap-x-12 gap-y-8 sm:grid-cols-2">
         <section aria-label="Destinatario">
           <h2 className="letterhead rule-thick pb-1.5 text-ink">
             Destinatario

@@ -126,6 +126,7 @@ Orquestador --tarea--> Develop --entrega--> Testing --informe--> Orquestador
 | T15 — Endurecer el acceso | [r2](docs/revisiones/T15-r2.md) | APROBADO | |
 | T16 — Sin desbordamiento a 375 px por textos ocultos | [r1](docs/revisiones/T16-r1.md) | SUSPENSO | La limpieza del E2E nuevo no borraba el cliente temporal si el test se pasaba de tiempo durante una navegación (D27) |
 | T16 — Sin desbordamiento a 375 px por textos ocultos | [r2](docs/revisiones/T16-r2.md) | APROBADO | |
+| T17 — Sin desbordamiento a 375 px por palabras largas | [r1](docs/revisiones/T17-r1.md) | APROBADO | |
 
 ### Fallos que encontró Testing y cómo se corrigieron
 
@@ -295,7 +296,8 @@ Hace falta Node.js 22 o posterior, la CLI de Supabase y un proyecto de Supabase.
    el entorno; nunca en el código). Las pruebas comprueban redirección y login, creación y
    cancelación de pedidos con devolución de stock, rechazo por falta de stock, reinicio de
    formularios cancelados y ausencia de scroll horizontal a 375 px (también con un cliente sin
-   teléfono y un producto sin SKU, que el test crea y borra al terminar, aunque falle).
+   teléfono, un producto sin SKU y nombres, emails y búsquedas de una sola palabra muy larga; los
+   clientes y productos que crean esos tests se borran al terminar, aunque fallen).
    Necesitan los datos de demostración (al menos dos productos, uno con stock 2 o más, un
    cliente y un pedido): si faltan, fallan con un mensaje que lo dice. Cada test cancela al
    terminar los pedidos que haya creado, también si falla a medias o se pasa de tiempo (la
@@ -440,7 +442,7 @@ Cómo entra la gente en Inventa, que es lo que decide cada valor:
 - El login lo hace una Server Action, así que **Supabase ve la IP del servidor** (Vercel, el runner
   de CI o tu máquina), no la del visitante: todos los inicios de sesión y las renovaciones de
   sesión que pasan por la app comparten los límites por IP.
-- Una ejecución de `npm run test:e2e` inicia sesión unas 13 veces (más si CI reintenta algún test).
+- Una ejecución de `npm run test:e2e` inicia sesión unas 14 veces (más si CI reintenta algún test).
 
 Lista de comprobación:
 
