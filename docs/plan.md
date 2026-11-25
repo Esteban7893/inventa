@@ -48,6 +48,7 @@ Encargo completo, autocontenido, en `docs/tareas/produccion-bloques-1-y-2.md`
 - [x] **T13 — Pedidos idempotentes.** Clave de idempotencia en `crear_pedido`.
 - [x] **T14 — Movimientos de stock.** Tabla de auditoría alimentada por triggers.
 - [x] **T15 — Endurecer el acceso.** Ajustes de Auth que hace el humano, documentados (la lista está hecha; aplicarla es del humano).
+- [ ] **T16 — Sin desbordamiento a 375 px por textos ocultos.** Los `sr-only` de las tablas ("Sin teléfono", "Sin SKU") ensanchaban el documento (nota 1 de T14 r3).
 
 ## Decisiones del orquestador
 
