@@ -49,7 +49,7 @@ Encargo completo, autocontenido, en `docs/tareas/produccion-bloques-1-y-2.md`
 - [x] **T14 — Movimientos de stock.** Tabla de auditoría alimentada por triggers.
 - [x] **T15 — Endurecer el acceso.** Ajustes de Auth que hace el humano, documentados (la lista está hecha; aplicarla es del humano).
 - [x] **T16 — Sin desbordamiento a 375 px por textos ocultos.** Los `sr-only` de las tablas ("Sin teléfono", "Sin SKU") ensanchaban el documento (nota 1 de T14 r3).
-- [ ] **T17 — Sin desbordamiento a 375 px por palabras largas.** Los textos que repiten lo buscado o un nombre (estado vacío de las búsquedas, «N productos con «…»», títulos de fichas) se parten en vez de ensanchar la página (nota 2 de T16 r1).
+- [x] **T17 — Sin desbordamiento a 375 px por palabras largas.** Los textos que repiten lo buscado o un nombre (estado vacío de las búsquedas, «N productos con «…»», títulos de fichas) se parten en vez de ensanchar la página (nota 2 de T16 r1).
 
 ## Decisiones del orquestador
 
@@ -209,6 +209,13 @@ Encargo completo, autocontenido, en `docs/tareas/produccion-bloques-1-y-2.md`
   los mutantes que dependen del CSS se construyen con `next build` normal en una copia. Quedan como
   notas de T16 r2: un cuerpo abandonado podría crear un dato después de la última comprobación de la
   limpieza (no se vio en 17 cortes), y `retryCleanup` no incluye el último error en el mensaje.
+- **T17 — palabras largas.** `overflow-wrap: break-word` en `body` (no reduce el ancho mínimo, así
+  que con datos normales no cambia nada: 26/26 capturas idénticas), `wrap-anywhere` en `EmptyState` y
+  `grid-cols-1` en el destinatario del albarán. Las celdas de tabla no se parten: su región tiene
+  scroll propio y no ensancha la página (D19 lo permite). Notas de T17 r1 que no bloquean: el E2E
+  escribe en el DOM el nombre y el email largos del albarán (no se puede crear un pedido sin dejar
+  datos), la comprobación de `/pedidos/nuevo` no discrimina, y una cifra irreal del panel (9+
+  caracteres) ahora se parte dentro del número en vez de salirse de su celda.
 - **T9 — ejecución de pgTAP sin Docker.** `supabase test db --linked` también invoca un
   contenedor Docker (`pg_prove`) y falla en máquinas sin Docker en marcha. Decisión: habilitar
   `pgtap` en el esquema `extensions` mediante migración (`supabase migration new`), escribir los

@@ -126,6 +126,7 @@ Orquestador --tarea--> Develop --entrega--> Testing --informe--> Orquestador
 | T15 — Endurecer el acceso | [r2](docs/revisiones/T15-r2.md) | APROBADO | |
 | T16 — Sin desbordamiento a 375 px por textos ocultos | [r1](docs/revisiones/T16-r1.md) | SUSPENSO | La limpieza del E2E nuevo no borraba el cliente temporal si el test se pasaba de tiempo durante una navegación (D27) |
 | T16 — Sin desbordamiento a 375 px por textos ocultos | [r2](docs/revisiones/T16-r2.md) | APROBADO | |
+| T17 — Sin desbordamiento a 375 px por palabras largas | [r1](docs/revisiones/T17-r1.md) | APROBADO | |
 
 ### Fallos que encontró Testing y cómo se corrigieron
 
