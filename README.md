@@ -412,11 +412,19 @@ Para que Vercel genere una URL de vista previa por cada pull request y despliegu
 ### Endurecer el acceso (Supabase Auth)
 
 Estos ajustes los hace **el humano** en el panel de Supabase (proyecto `inventa`); ningún agente
-cambia la configuración de la cuenta. Los nombres de menú y de campo salen de la documentación de
-Supabase y del código del panel (Supabase Studio) a 25/11/2026: si alguno ha cambiado, el enlace
-directo lleva a la página correcta. El punto de partida, comprobado en solo lectura ese día:
-el registro público está **abierto**, la confirmación de email está activada y
-`supabase db advisors --linked --type security` avisa de `auth_leaked_password_protection`.
+cambia la configuración de la cuenta.
+
+**Lo que no hemos podido ver.** El equipo de agentes **no ha abierto el panel real de este
+proyecto ni sabe en qué plan está** (gratuito o Pro). Los nombres de menú y de campo salen de la
+documentación de Supabase y del código del panel (Supabase Studio) a 25/11/2026: si alguno ha
+cambiado, el enlace directo lleva a la página correcta. Tampoco conocemos los valores actuales de
+longitud mínima, límites, MFA o sesiones. **Antes de los puntos 3 y 7, comprueba el plan de la
+organización** en la página de facturación (*Billing*) del panel, porque parte de esos ajustes
+solo existe en Pro o superior.
+
+Lo único comprobado (en solo lectura, ese mismo día): el registro público está **abierto**, la
+confirmación de email está activada y `supabase db advisors --linked --type security` avisa de
+`auth_leaked_password_protection`.
 
 Cómo entra la gente en Inventa, que es lo que decide cada valor:
 
@@ -434,16 +442,20 @@ Lista de comprobación:
   ([enlace](https://supabase.com/dashboard/project/uqupgywhmmdpjjenxywb/auth/providers)):
   desactiva **Allow new users to sign up** y deja activado **Confirm email**.
 
-  Por qué: la app no tiene registro, pero la API de Supabase sí lo acepta con la clave publicable,
-  que es pública. Con el registro abierto cualquiera puede crear cuentas en el proyecto (RLS le
-  impide ver datos ajenos, pero no tiene por qué existir). Crear usuarios desde
+  Por qué: la app no tiene registro, pero con el registro abierto la API de Supabase acepta
+  peticiones de alta de cualquiera con la clave publicable, que es pública. Que esa cuenta llegue
+  a usarse depende de la confirmación por email (y RLS le impediría ver datos ajenos), pero no
+  tiene por qué poder pedirse. Crear usuarios desde
   *Authentication → Users → Add user → Create new user* sigue funcionando con el registro
   cerrado; deja marcado *Auto confirm user?*, porque el correo por defecto de Supabase solo envía
   emails a las direcciones del equipo del proyecto.
 
-  Comprobar (solo lectura, con las variables de `.env.local` cargadas en la terminal):
+  Comprobar (solo lectura). Carga `.env.local` en la terminal sin imprimirlo y consulta los
+  ajustes públicos de Auth. No uses `cat .env.local` ni `env` para ver las variables: el archivo
+  tiene también otros tokens.
 
   ```bash
+  set -a; . ./.env.local; set +a
   curl -s "$NEXT_PUBLIC_SUPABASE_URL/auth/v1/settings" \
     -H "apikey: $NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY"
   ```
@@ -462,26 +474,29 @@ Lista de comprobación:
   una sesión robada cambie la contraseña por la API (la app no tiene pantalla de cambio, así que
   no rompe nada).
 
-  Los requisitos **solo se aplican al crear o cambiar una contraseña**, también al crear usuarios
-  desde el panel. Una contraseña existente que no los cumpla sigue entrando: Supabase solo lo
-  indica en la respuesta (`weak_password`), y la app no lo usa. La contraseña del usuario de
-  prueba (tabla de arriba) tiene 12 caracteres y los cuatro tipos, así que cumple estos valores.
+  Una contraseña que no cumple los requisitos **solo se rechaza al crearla o cambiarla**, también
+  al crear usuarios desde el panel. Una contraseña existente que no los cumpla no se bloquea: al
+  entrar, Supabase la comprueba y solo lo indica en la respuesta (`weak_password`), que la app no
+  usa. La contraseña del usuario de prueba (tabla de arriba) tiene 12 caracteres y los cuatro
+  tipos, así que cumple estos valores.
   La del usuario E2E (`E2E_PASSWORD`) no está en el repositorio: si es más débil, los tests
   siguen entrando, pero conviene cambiarla por una que cumpla y actualizar el secreto.
 
-  Comprobar: vuelve a abrir el panel y confirma que los valores se guardaron. Si quieres probarlo,
-  en *Authentication → Users → Add user → Create new user* una contraseña de 8 caracteres tiene
-  que rechazarse (no se crea ningún usuario).
+  Comprobar (solo lectura): vuelve a abrir el panel y confirma que los valores se guardaron.
 
 - [ ] **3. Protección de contraseñas filtradas.** En el mismo panel *Email*, activa
   **Prevent use of leaked passwords** (*Authentication → Attack Protection* también lo muestra y
   enlaza aquí). Rechaza contraseñas que aparecen en filtraciones conocidas (HaveIBeenPwned) al
   crearlas o cambiarlas.
 
-  **Solo está disponible en el plan Pro o superior.** En el plan gratuito el interruptor no se
-  puede activar y el aviso `auth_leaked_password_protection` de los advisors se queda: es un
-  aviso conocido y aceptado, no un fallo de la app. Las contraseñas que ya existen no se
-  revisan; solo las nuevas o cambiadas.
+  **Solo está disponible en el plan Pro o superior, y no sabemos en qué plan está el proyecto:**
+  compruébalo antes (ver la introducción). En el plan gratuito el interruptor no se puede activar
+  y el aviso `auth_leaked_password_protection` de los advisors se queda: es un aviso conocido y
+  aceptado, no un fallo de la app.
+
+  Igual que en el punto 2, las contraseñas que ya existen no se bloquean: al entrar, Supabase las
+  comprueba y, si están filtradas, solo lo indica en la respuesta (`weak_password`), que la app no
+  usa. Solo se rechazan al crear o cambiar una contraseña.
 
   Comprobar (solo lectura):
 
@@ -496,7 +511,8 @@ Lista de comprobación:
   ([enlace](https://supabase.com/dashboard/project/uqupgywhmmdpjjenxywb/auth/rate-limits)).
 
   Ojo con los nombres: el login con contraseña **no** lo limita *Rate limit for sign-ups and
-  sign-ins* (ese cubre registro, enlaces mágicos, códigos por email y recuperación), sino
+  sign-ins* (ese cubre registro, enlaces mágicos, códigos por email, recuperación, reenvío de
+  emails y la actualización del usuario, cambio de contraseña incluido), sino
   **Rate limit for token refreshes**, que comparte con la renovación de sesiones. Valores:
 
   - **Rate limit for token refreshes:** deja el valor por defecto (150 cada 5 minutos por IP).
@@ -513,7 +529,10 @@ Lista de comprobación:
   IP. La defensa real contra la fuerza bruta es la contraseña larga del punto 2 (y, más adelante,
   CAPTCHA o MFA).
 
-  Comprobar: el panel muestra los valores guardados, y `npm run test:e2e` sigue pasando.
+  Comprobar: el panel muestra los valores guardados, y `npm run test:e2e` sigue pasando. Los
+  E2E crean y cancelan pedidos en producción: lee antes
+  [«Antes de activar los tests E2E en CI»](#antes-de-activar-los-tests-e2e-en-ci) y, si usas el
+  usuario de prueba, recarga después los datos de demostración.
 
 - [ ] **5. CAPTCHA: no activar todavía.** El interruptor **Enable Captcha protection** está en
   *Authentication → Attack Protection* ([enlace](https://supabase.com/dashboard/project/uqupgywhmmdpjjenxywb/auth/protection);
@@ -543,12 +562,13 @@ Lista de comprobación:
 
   Comprobar: el panel muestra el estado de TOTP. No cambies nada aquí hasta que exista esa tarea.
 
-- [ ] **7. Sesiones y enlaces de email.** *Authentication → Sessions*
+- [ ] **7. Sesiones y enlaces de email.** Parte de este punto depende del plan, que no
+  conocemos: compruébalo antes (ver la introducción). *Authentication → Sessions*
   ([enlace](https://supabase.com/dashboard/project/uqupgywhmmdpjjenxywb/auth/sessions)): activa
   **Detect and revoke potentially compromised refresh tokens** si no lo está y deja
   **Access token expiry time** en 3600 segundos (lo que recomienda el panel).
-  **Time-box user sessions** e **Inactivity timeout** solo existen en el plan Pro o superior; si
-  lo tienes, un *Inactivity timeout* de unas 8 horas obliga a volver a entrar tras una jornada sin
+  **Time-box user sessions** e **Inactivity timeout** solo se pueden configurar en el plan Pro o
+  superior; si lo tienes, un *Inactivity timeout* de unas 8 horas obliga a volver a entrar tras una jornada sin
   uso. En *Sign In / Providers → Email*, **Email OTP expiration** a 3600 segundos o menos (la lista
   de producción de Supabase lo pide; también fija la caducidad de los enlaces de confirmación,
   recuperación e invitación) y, como la app no los usa, puedes desactivar
@@ -559,4 +579,6 @@ Lista de comprobación:
 
 - [ ] **8. Comprobación final.** Entra en <https://inventa-rosy.vercel.app/login> con el usuario
   de prueba, ejecuta `npm run test:e2e` y vuelve a pasar
-  `supabase db advisors --linked --type security`.
+  `supabase db advisors --linked --type security`. Si los E2E han usado el usuario de prueba,
+  recarga los datos de demostración (`supabase db query --linked -f supabase/seed_demo.sql`; ver
+  [«Antes de activar los tests E2E en CI»](#antes-de-activar-los-tests-e2e-en-ci)).
