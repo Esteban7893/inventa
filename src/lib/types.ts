@@ -1,4 +1,5 @@
 import type { Database, Tables } from "@/lib/database.types";
+import type { MovementReason } from "@/lib/domain/stock-movements";
 
 /**
  * Tipos de las filas de la base de datos derivados de `database.types.ts` (`npm run db:types`).
@@ -16,6 +17,11 @@ export type Order = Omit<Tables<"pedidos">, "estado"> & {
 };
 
 export type OrderLine = Tables<"pedido_lineas">;
+
+/** Movimiento de stock (lo escriben los triggers de la base de datos; la app solo lo lee). */
+export type StockMovement = Omit<Tables<"movimientos_stock">, "motivo"> & {
+  motivo: MovementReason;
+};
 
 /** Elemento del array `p_lineas` que recibe la función SQL `crear_pedido`. */
 export type CreateOrderLine = Pick<OrderLine, "producto_id" | "cantidad">;

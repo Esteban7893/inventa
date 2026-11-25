@@ -41,6 +41,51 @@ export type Database = {
         }
         Relationships: []
       }
+      movimientos_stock: {
+        Row: {
+          created_at: string
+          delta: number
+          id: number
+          motivo: string
+          owner_id: string
+          pedido_id: string | null
+          producto_id: string
+        }
+        Insert: {
+          created_at?: string
+          delta: number
+          id?: never
+          motivo: string
+          owner_id?: string
+          pedido_id?: string | null
+          producto_id: string
+        }
+        Update: {
+          created_at?: string
+          delta?: number
+          id?: never
+          motivo?: string
+          owner_id?: string
+          pedido_id?: string | null
+          producto_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "movimientos_stock_pedido_fkey"
+            columns: ["pedido_id", "owner_id"]
+            isOneToOne: false
+            referencedRelation: "pedidos"
+            referencedColumns: ["id", "owner_id"]
+          },
+          {
+            foreignKeyName: "movimientos_stock_producto_fkey"
+            columns: ["producto_id", "owner_id"]
+            isOneToOne: false
+            referencedRelation: "productos"
+            referencedColumns: ["id", "owner_id"]
+          },
+        ]
+      }
       pedido_lineas: {
         Row: {
           cantidad: number
@@ -94,6 +139,7 @@ export type Database = {
           enviado_at: string | null
           estado: string
           id: string
+          idempotency_key: string | null
           owner_id: string
           total_cents: number
         }
@@ -104,6 +150,7 @@ export type Database = {
           enviado_at?: string | null
           estado?: string
           id?: string
+          idempotency_key?: string | null
           owner_id?: string
           total_cents: number
         }
@@ -114,6 +161,7 @@ export type Database = {
           enviado_at?: string | null
           estado?: string
           id?: string
+          idempotency_key?: string | null
           owner_id?: string
           total_cents?: number
         }
@@ -167,10 +215,67 @@ export type Database = {
     Functions: {
       cancelar_pedido: { Args: { p_pedido_id: string }; Returns: undefined }
       crear_pedido: {
-        Args: { p_cliente_id: string; p_lineas: Json }
+        Args: {
+          p_cliente_id: string
+          p_idempotency_key?: string
+          p_lineas: Json
+        }
         Returns: string
       }
       enviar_pedido: { Args: { p_pedido_id: string }; Returns: undefined }
+      panel_resumen: {
+        Args: { p_ahora?: string }
+        Returns: {
+          cancelados_mes: number
+          cancelados_mes_anterior: number
+          ingresos_mes_anterior_cents: number
+          ingresos_mes_cents: number
+          mes_actual: string
+          mes_anterior: string
+          pedidos_mes: number
+          pedidos_mes_anterior: number
+          pendientes: number
+          productos: number
+          productos_bajo_minimo: number
+          unidades: number
+        }[]
+      }
+      pedidos_pagina: {
+        Args: {
+          p_antes_created_at?: string
+          p_antes_id?: string
+          p_estado?: string
+          p_limite?: number
+        }
+        Returns: {
+          cliente_nombre: string
+          created_at: string
+          estado: string
+          id: string
+          lineas: number
+          total_cents: number
+          unidades: number
+        }[]
+      }
+      productos_bajo_minimo: {
+        Args: { p_limite?: number }
+        Returns: {
+          created_at: string
+          id: string
+          nombre: string
+          owner_id: string
+          precio_cents: number
+          sku: string | null
+          stock: number
+          stock_minimo: number
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "productos"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
     }
     Enums: {
       [_ in never]: never

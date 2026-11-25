@@ -8,11 +8,13 @@ import { OrderStatusStamp, orderStatusLabel } from "@/components/order-status-st
 import { ButtonLink } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { LedgerTable, type LedgerColumn } from "@/components/ui/ledger-table";
+import { Notice } from "@/components/ui/notice";
 import { PageHeader } from "@/components/ui/page-header";
 import { requireUser } from "@/lib/auth";
 import { formatDateTime } from "@/lib/domain/dates";
 import { formatCents } from "@/lib/domain/money";
 import { lineSubtotal, orderReference, parseOrderStatus } from "@/lib/domain/order";
+import { MAX_ORDER_LINES } from "@/lib/domain/order-input";
 import { createClient } from "@/lib/supabase/server";
 import type { Customer, Order, OrderLine, Product } from "@/lib/types";
 
@@ -88,6 +90,10 @@ const loadOrder = cache(async (id: string): Promise<OrderDetail> => {
       "id, estado, total_cents, created_at, enviado_at, cancelado_at, clientes(nombre, email, telefono), pedido_lineas(id, cantidad, precio_unit_cents, productos(nombre, sku))",
     )
     .eq("id", id)
+    // La app no deja crear pedidos de más de MAX_ORDER_LINES líneas; el límite (más una, para
+    // saber si hay más) protege la página de un pedido creado por otra vía con muchas más.
+    .order("id", { referencedTable: "pedido_lineas" })
+    .limit(MAX_ORDER_LINES + 1, { referencedTable: "pedido_lineas" })
     .maybeSingle();
 
   if (error) {
@@ -109,9 +115,11 @@ export default async function PedidoPage({ params }: Props) {
 
   const reference = orderReference(order.id);
   const customer = order.clientes;
-  const lines = [...order.pedido_lineas].sort((a, b) =>
-    byName.compare(a.productos?.nombre ?? "", b.productos?.nombre ?? ""),
-  );
+  const truncated = order.pedido_lineas.length > MAX_ORDER_LINES;
+  // Como mucho MAX_ORDER_LINES filas: ordenarlas por el nombre del producto en JS es barato.
+  const lines = order.pedido_lineas
+    .slice(0, MAX_ORDER_LINES)
+    .sort((a, b) => byName.compare(a.productos?.nombre ?? "", b.productos?.nombre ?? ""));
   const units = lines.reduce((sum, line) => sum + line.cantidad, 0);
 
   return (
@@ -126,7 +134,9 @@ export default async function PedidoPage({ params }: Props) {
         actions={<OrderStatusStamp status={order.estado} />}
       />
 
-      <div className="grid gap-x-12 gap-y-8 sm:grid-cols-2">
+      {/* `grid-cols-1` en móvil: una columna implícita (`auto`) crecería con un nombre o un email
+          sin espacios del destinatario y ensancharía la página. */}
+      <div className="grid grid-cols-1 gap-x-12 gap-y-8 sm:grid-cols-2">
         <section aria-label="Destinatario">
           <h2 className="letterhead rule-thick pb-1.5 text-ink">
             Destinatario
@@ -196,6 +206,12 @@ export default async function PedidoPage({ params }: Props) {
           }}
           empty={<EmptyState title="Este pedido no tiene líneas." />}
         />
+        {truncated && (
+          <Notice tone="ink" className="mt-4">
+            Este pedido tiene más de {MAX_ORDER_LINES} líneas: se muestran {MAX_ORDER_LINES} y el recuento de
+            unidades es solo de esas. El total sí es el del pedido completo.
+          </Notice>
+        )}
         {order.estado === "cancelado" && (
           <p className="mt-4 text-sm text-ink-soft">
             Pedido cancelado: sus unidades volvieron al stock al cancelarlo.

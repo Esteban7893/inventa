@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { dbErrorMessage } from "@/lib/domain/db-errors";
+import { dbErrorMessage, isReusedKeyError } from "@/lib/domain/db-errors";
 
 const GENERIC = "No se ha podido completar la operación. Inténtalo de nuevo.";
 
@@ -131,5 +131,34 @@ describe("dbErrorMessage", () => {
       }),
     ).toBe(GENERIC);
     expect(dbErrorMessage({ code: "23505", message: "duplicate key value" })).toBe(GENERIC);
+  });
+});
+
+describe("dbErrorMessage (listados de T11)", () => {
+  it("traduce el cursor y el filtro de pedidos no válidos", () => {
+    expect(dbErrorMessage({ message: "CURSOR_INVALIDO" })).toBe(
+      "El enlace de esta página de pedidos no es válido. Vuelve a la primera página.",
+    );
+    expect(dbErrorMessage({ message: "FILTRO_INVALIDO" })).toBe("Ese filtro de estado no existe. Elige uno de la lista.");
+  });
+});
+
+describe("pedidos idempotentes (T13)", () => {
+  it("traduce la clave reutilizada con otro contenido", () => {
+    expect(dbErrorMessage({ code: "P0001", message: "CLAVE_REUTILIZADA" })).toBe(
+      "Con este envío ya se guardó un pedido con otros datos. Revisa la lista de pedidos antes de seguir: si quieres otro pedido, vuelve a pulsar «Crear pedido».",
+    );
+    expect(dbErrorMessage({ message: " CLAVE_REUTILIZADA " })).not.toBe(GENERIC);
+  });
+
+  it("reconoce el error de clave reutilizada y solo ese", () => {
+    expect(isReusedKeyError({ code: "P0001", message: "CLAVE_REUTILIZADA" })).toBe(true);
+    expect(isReusedKeyError({ message: " CLAVE_REUTILIZADA\n" })).toBe(true);
+    for (const message of ["CLAVE_REUTILIZADA_X", "STOCK_INSUFICIENTE: Cafe", "", undefined]) {
+      expect(isReusedKeyError({ message }), String(message)).toBe(false);
+    }
+    expect(
+      isReusedKeyError({ code: "23505", message: 'duplicate key value violates unique constraint "pedidos_owner_id_idempotency_key_key"' }),
+    ).toBe(false);
   });
 });

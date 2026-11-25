@@ -30,8 +30,22 @@ type LedgerTableProps<Row> = {
   /** Regla doble de tinta sobre la fila de totales (el total de un albarán). */
   doubleRuleFooter?: boolean;
   /** Ancho mínimo en px antes de que la tabla tenga su propio scroll horizontal. */
-  minWidth?: number;
+  minWidth?: LedgerMinWidth;
 };
+
+/**
+ * Anchos mínimos con su clase de Tailwind escrita entera (así la genera el compilador).
+ * Una clase y no `style={{ minWidth }}`: la CSP no permite atributos `style` en el HTML.
+ */
+const MIN_WIDTH_CLASS = {
+  340: "min-w-[340px]",
+  560: "min-w-[560px]",
+  600: "min-w-[600px]",
+  680: "min-w-[680px]",
+  760: "min-w-[760px]",
+} as const;
+
+export type LedgerMinWidth = keyof typeof MIN_WIDTH_CLASS;
 
 function alignment<Row>(column: LedgerColumn<Row>): string {
   return column.numeric ? "figures text-right whitespace-nowrap" : "";
@@ -52,9 +66,11 @@ export function LedgerTable<Row>({
     return <>{empty}</>;
   }
 
+  // `relative`: la región es el bloque contenedor de los textos `sr-only` de la tabla (que son
+  // `position: absolute`); sin él escapan de su scroll y ensanchan la página en móvil.
   return (
-    <div role="region" aria-label={caption} tabIndex={0} className="-mx-4 overflow-x-auto px-4 sm:mx-0 sm:px-0">
-      <table className="w-full border-collapse text-left text-[15px]" style={{ minWidth }}>
+    <div role="region" aria-label={caption} tabIndex={0} className="relative -mx-4 overflow-x-auto px-4 sm:mx-0 sm:px-0">
+      <table className={cx("w-full border-collapse text-left text-[15px]", MIN_WIDTH_CLASS[minWidth])}>
         <caption className="sr-only">{caption}</caption>
         <thead>
           <tr className="rule-thick">

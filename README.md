@@ -52,6 +52,22 @@ la misma sesión y Claude Code solo los registra con nombre propio al empezar un
 Cada encargo concreto del orquestador añadía el texto de la tarea y, en las rondas de
 corrección, el informe completo de Testing.
 
+**T6–T10 (producción): primera versión hecha fuera del equipo.** Después de T1–T5 se encargó
+llevar la app a estándares de producción ([`docs/tareas/produccion-bloques-1-y-2.md`](docs/tareas/produccion-bloques-1-y-2.md)).
+La primera versión de T6–T10 (sus informes r1, y r2 en T10) la hizo otro agente, Gemini en
+Antigravity, que hizo a la vez los tres papeles, sin subagentes. Como esta prueba pide el equipo
+de Claude Code, el orquestador volvió a pasar las cinco tareas por el bucle sobre ese código:
+Develop las retomó y rehízo lo que no cumplía, y un Testing nuevo las revisó en rondas nuevas.
+Esas rondas encontraron, entre otras cosas, que el escaneo de secretos de CI analizaba 0 commits
+en los push a `main`, que el informe de Playwright de CI habría publicado la contraseña del
+usuario E2E y que varios tests pgTAP podían pasar en falso. Los informes de la primera versión
+se conservan tal cual; la decisión está en [`docs/plan.md`](docs/plan.md).
+
+**T11–T14: migraciones en dos fases.** Las tareas que cambian la base de datos pasan dos veces
+por Testing. En la fase 1 se revisa solo la migración, probada dentro de transacciones que se
+deshacen. Con el APROBADO, el orquestador la aplica, pasa los advisors y regenera los tipos. En
+la fase 2 se revisa la app que la usa. T12 no toca la base de datos y tiene una sola fase.
+
 ### El bucle
 
 ```
@@ -83,16 +99,34 @@ Orquestador --tarea--> Develop --entrega--> Testing --informe--> Orquestador
 | T3 — Productos y clientes | [r2](docs/revisiones/T3-r2.md) | APROBADO | |
 | T4 — Pedidos | [r1](docs/revisiones/T4-r1.md) | APROBADO | |
 | T5 — Panel y acabado | [r1](docs/revisiones/T5-r1.md) | APROBADO | |
-| T6 — Integración continua | [r1](docs/revisiones/T6-r1.md) | APROBADO | |
+| T6 — Integración continua | [r1](docs/revisiones/T6-r1.md) | APROBADO | Primera versión, hecha fuera del equipo (ver arriba) |
 | T6 — Integración continua | [r2](docs/revisiones/T6-r2.md) | SUSPENSO | Lista del README partida por el párrafo de protección de `main` (D23) |
 | T6 — Integración continua | [r3](docs/revisiones/T6-r3.md) | APROBADO | |
-| T7 — Migraciones con historial | [r1](docs/revisiones/T7-r1.md) | APROBADO | |
+| T7 — Migraciones con historial | [r1](docs/revisiones/T7-r1.md) | APROBADO | Primera versión, hecha fuera del equipo (ver arriba) |
 | T7 — Migraciones con historial | [r2](docs/revisiones/T7-r2.md) | APROBADO | |
-| T8 — Tipos generados | [r1](docs/revisiones/T8-r1.md) | APROBADO | |
+| T8 — Tipos generados | [r1](docs/revisiones/T8-r1.md) | APROBADO | Primera versión, hecha fuera del equipo (ver arriba) |
 | T8 — Tipos generados | [r2](docs/revisiones/T8-r2.md) | APROBADO | |
-| T9 — Tests de base de datos (pgTAP) | [r1](docs/revisiones/T9-r1.md) | APROBADO | |
-| T10 — Tests E2E (Playwright) | [r1](docs/revisiones/T10-r1.md) | SUSPENSO | `actions/upload-artifact@v4` en runtime `node20` en CI (D23) |
-| T10 — Tests E2E (Playwright) | [r2](docs/revisiones/T10-r2.md) | APROBADO | |
+| T9 — Tests de base de datos (pgTAP) | [r1](docs/revisiones/T9-r1.md) | APROBADO | Primera versión, hecha fuera del equipo (ver arriba) |
+| T9 — Tests de base de datos (pgTAP) | [r2](docs/revisiones/T9-r2.md) | SUSPENSO | Tests que podían pasar en falso (UPDATE de `anon`, cambio de rol sin comprobar) y guarda de transacciones incompleta (D26) |
+| T9 — Tests de base de datos (pgTAP) | [r3](docs/revisiones/T9-r3.md) | APROBADO | |
+| T10 — Tests E2E (Playwright) | [r1](docs/revisiones/T10-r1.md) | SUSPENSO | Primera versión, hecha fuera del equipo: `actions/upload-artifact@v4` en runtime `node20` en CI (D23) |
+| T10 — Tests E2E (Playwright) | [r2](docs/revisiones/T10-r2.md) | APROBADO | Primera versión, hecha fuera del equipo (ver arriba) |
+| T10 — Tests E2E (Playwright) | [r3](docs/revisiones/T10-r3.md) | APROBADO | |
+| T11 — Consultas que escalan | [r1](docs/revisiones/T11-r1.md) | SUSPENSO | Fase 1 (migración): los tests de `pedidos_pagina` y del orden de stock bajo no detectaban mutantes de la paginación por cursor y del desempate (D26) |
+| T11 — Consultas que escalan | [r2](docs/revisiones/T11-r2.md) | APROBADO | Fase 1 (migración) |
+| T11 — Consultas que escalan | [r3](docs/revisiones/T11-r3.md) | APROBADO | Fase 2 (la app) |
+| T12 — Cabeceras de seguridad | [r1](docs/revisiones/T12-r1.md) | APROBADO | |
+| T13 — Pedidos idempotentes | [r1](docs/revisiones/T13-r1.md) | SUSPENSO | Fase 1 (migración): los tests no exigían que el bloqueo fuera una sentencia aparte ni que su clave fuera solo usuario y clave (D26) |
+| T13 — Pedidos idempotentes | [r2](docs/revisiones/T13-r2.md) | APROBADO | Fase 1 (migración) |
+| T13 — Pedidos idempotentes | [r3](docs/revisiones/T13-r3.md) | APROBADO | Fase 2 (la app) |
+| T14 — Movimientos de stock | [r1](docs/revisiones/T14-r1.md) | APROBADO | Fase 1 (migración) |
+| T14 — Movimientos de stock | [r2](docs/revisiones/T14-r2.md) | SUSPENSO | Fase 2 (la app): con un total múltiplo exacto de 20, la página siguiente a la última decía «Aún no hay movimientos» y «Página 2 de 1» (D18) |
+| T14 — Movimientos de stock | [r3](docs/revisiones/T14-r3.md) | APROBADO | Fase 2 (la app) |
+| T15 — Endurecer el acceso | [r1](docs/revisiones/T15-r1.md) | SUSPENSO | La lista decía que las contraseñas existentes no se revisan, proponía una prueba que crea un usuario en producción y no decía que el equipo no ha visto el panel ni el plan del proyecto |
+| T15 — Endurecer el acceso | [r2](docs/revisiones/T15-r2.md) | APROBADO | |
+| T16 — Sin desbordamiento a 375 px por textos ocultos | [r1](docs/revisiones/T16-r1.md) | SUSPENSO | La limpieza del E2E nuevo no borraba el cliente temporal si el test se pasaba de tiempo durante una navegación (D27) |
+| T16 — Sin desbordamiento a 375 px por textos ocultos | [r2](docs/revisiones/T16-r2.md) | APROBADO | |
+| T17 — Sin desbordamiento a 375 px por palabras largas | [r1](docs/revisiones/T17-r1.md) | APROBADO | |
 
 ### Fallos que encontró Testing y cómo se corrigieron
 
@@ -261,8 +295,16 @@ Hace falta Node.js 22 o posterior, la CLI de Supabase y un proyecto de Supabase.
    `npx playwright install chromium` y define `E2E_EMAIL` y `E2E_PASSWORD` (en `.env.local` o en
    el entorno; nunca en el código). Las pruebas comprueban redirección y login, creación y
    cancelación de pedidos con devolución de stock, rechazo por falta de stock, reinicio de
-   formularios cancelados y ausencia de scroll horizontal a 375 px. Cada test cancela los pedidos
-   que crea para devolver el stock a su valor inicial.
+   formularios cancelados y ausencia de scroll horizontal a 375 px (también con un cliente sin
+   teléfono, un producto sin SKU y nombres, emails y búsquedas de una sola palabra muy larga; los
+   clientes y productos que crean esos tests se borran al terminar, aunque fallen).
+   Necesitan los datos de demostración (al menos dos productos, uno con stock 2 o más, un
+   cliente y un pedido): si faltan, fallan con un mensaje que lo dice. Cada test cancela al
+   terminar los pedidos que haya creado, también si falla a medias o se pasa de tiempo (la
+   limpieza va en una página propia y reintenta), y el stock vuelve a su valor; el pedido
+   cancelado sí se queda en el listado (ver «Antes de activar los tests E2E en CI»). El informe
+   HTML local (`playwright-report/`, ignorado por git) incluye lo tecleado en el login,
+   contraseña incluida: no lo compartas.
 
 ## Producción
 
@@ -272,7 +314,26 @@ Cada pull request y cada push a `main` ejecutan [`.github/workflows/ci.yml`](.gi
 
 - **Calidad:** instala dependencias con `npm ci` (Node.js 22 LTS) y ejecuta `npm run lint` (falla también con avisos), `npm run typecheck`, `npm test` y `npm run build` con valores ficticios para las variables públicas de Supabase.
 - **Secretos:** escanea **todo el historial** de git con la CLI de Gitleaks (versión fijada y comprobada por SHA-256 en el workflow; reglas por defecto más `.gitleaks.toml`) para evitar que entren credenciales en el repositorio. Para actualizar Gitleaks se cambian a mano `GITLEAKS_VERSION` y `GITLEAKS_SHA256` en `ci.yml`.
-- **E2E (Playwright) (opcional):** solo se ejecuta si están configurados en GitHub Secrets `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`, `E2E_EMAIL` y `E2E_PASSWORD`. Si existen, instala Chromium, compila la app con `npm run build` y lanza `npm run test:e2e` contra `npm run start`. Si faltan, el job se omite sin bloquear el PR.
+- **E2E (Playwright) (opcional):** solo se ejecuta si están configurados en GitHub Secrets `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`, `E2E_EMAIL` y `E2E_PASSWORD`. Si existen, instala Chromium, compila la app con `npm run build` y lanza `npm run test:e2e` contra `npm run start`. Si faltan, el job se omite sin bloquear el PR. Solo corre un E2E a la vez en todo el repositorio y una ejecución nueva no lo cancela a medias; si falla, sube como artefacto solo las capturas de pantalla (no el informe HTML ni las trazas, que guardarían la contraseña tecleada y las cookies de sesión).
+
+#### Antes de activar los tests E2E en CI
+
+Los secretos los añade el humano en GitHub (*Settings → Secrets and variables → Actions*). Antes,
+ten en cuenta que los tests corren contra la base de datos de producción:
+
+- **Cada ejecución deja pedidos cancelados.** El test de crear y cancelar un pedido deja uno en
+  estado *cancelado* (dos si CI lo reintenta). El stock vuelve a su valor, pero el pedido sale en
+  el listado y cuenta en el panel. Con el usuario de prueba, los evaluadores lo verían.
+- **Lo recomendable es un usuario E2E distinto**, con sus propios datos (RLS lo aísla del usuario
+  de prueba): créalo en *Authentication → Users* y pon su email y contraseña en `E2E_EMAIL` y
+  `E2E_PASSWORD`. `supabase/seed_demo.sql` está escrito para `prueba@inventa.test`, así que, para
+  cargarle datos, ejecuta una copia local de ese script con el email cambiado (o crea a mano en la
+  app al menos dos productos, uno con stock 2 o más, un cliente y un pedido). Puedes volver a
+  ejecutar esa copia de vez en cuando para quitar los pedidos cancelados.
+- **Si usas el usuario de prueba**, recarga los datos de demostración después de las ejecuciones
+  (`supabase db query --linked -f supabase/seed_demo.sql`) para que no queden pedidos de los tests.
+- Los logs de GitHub ocultan el valor de los secretos. Las capturas que se suben si un test falla
+  no muestran la contraseña (el campo la tapa), pero sí los datos de la pantalla.
 
 `main` está protegida en GitHub: para los cambios normales el pull request es obligatorio, con los checks `Calidad` y `Secretos` en verde y la rama al día, y no se admiten force-push ni borrar la rama. La protección no se aplica a los administradores del repositorio (`enforce_admins` desactivado), que podrían saltársela. El job E2E no es un check obligatorio porque solo corre si existen sus secretos.
 
@@ -340,7 +401,7 @@ en el flujo normal no se usa `migration repair`. Al cerrar T7, `supabase migrati
 
 **Datos, no esquema.** Dos cosas sí ejecutan SQL contra la base de datos con
 `supabase db query --linked -f`, y ninguna cambia el esquema: la recarga de los datos de
-demostración (`supabase/seed_demo.sql`, solo la hace el orquestador) y `npm run test:db`
+demostración (`supabase/seed_demo.sql`, la hace el orquestador o el humano) y `npm run test:db`
 cuando no hay Docker (cada archivo de tests va en `begin; … rollback;` y no deja filas).
 
 Inventa trabaja con un único proyecto de Supabase. Si algún día se separa un entorno de
@@ -355,3 +416,177 @@ Para que Vercel genere una URL de vista previa por cada pull request y despliegu
 
 1. En Vercel, abre *Account Settings → Authentication → Connect GitHub* y autoriza la cuenta de GitHub.
 2. En el proyecto de Inventa en Vercel, abre *Project → Settings → Git*, vincula el repositorio `Esteban7893/inventa` y deja `main` como rama de producción.
+
+### Endurecer el acceso (Supabase Auth)
+
+Estos ajustes los hace **el humano** en el panel de Supabase (proyecto `inventa`); ningún agente
+cambia la configuración de la cuenta.
+
+**Lo que no hemos podido ver.** El equipo de agentes **no ha abierto el panel real de este
+proyecto ni sabe en qué plan está** (gratuito o Pro). Los nombres de menú y de campo salen de la
+documentación de Supabase y del código del panel (Supabase Studio) a 25/11/2026: si alguno ha
+cambiado, el enlace directo lleva a la página correcta. Tampoco conocemos los valores actuales de
+longitud mínima, límites, MFA o sesiones. **Antes de los puntos 3 y 7, comprueba el plan de la
+organización** en la página de facturación (*Billing*) del panel, porque parte de esos ajustes
+solo existe en Pro o superior.
+
+Lo único comprobado (en solo lectura, ese mismo día): el registro público está **abierto**, la
+confirmación de email está activada y `supabase db advisors --linked --type security` avisa de
+`auth_leaked_password_protection`.
+
+Cómo entra la gente en Inventa, que es lo que decide cada valor:
+
+- Solo hay **inicio de sesión** con email y contraseña (`src/app/login`). No hay registro, ni
+  recuperación o cambio de contraseña, ni enlaces mágicos, ni MFA en la app. Los usuarios se crean
+  a mano en *Authentication → Users*.
+- El login lo hace una Server Action, así que **Supabase ve la IP del servidor** (Vercel, el runner
+  de CI o tu máquina), no la del visitante: todos los inicios de sesión y las renovaciones de
+  sesión que pasan por la app comparten los límites por IP.
+- Una ejecución de `npm run test:e2e` inicia sesión unas 14 veces (más si CI reintenta algún test).
+
+Lista de comprobación:
+
+- [ ] **1. Cerrar el registro público.** *Authentication → Sign In / Providers → User Signups*
+  ([enlace](https://supabase.com/dashboard/project/uqupgywhmmdpjjenxywb/auth/providers)):
+  desactiva **Allow new users to sign up** y deja activado **Confirm email**.
+
+  Por qué: la app no tiene registro, pero con el registro abierto la API de Supabase acepta
+  peticiones de alta de cualquiera con la clave publicable, que es pública. Que esa cuenta llegue
+  a usarse depende de la confirmación por email (y RLS le impediría ver datos ajenos), pero no
+  tiene por qué poder pedirse. Crear usuarios desde
+  *Authentication → Users → Add user → Create new user* sigue funcionando con el registro
+  cerrado; deja marcado *Auto confirm user?*, porque el correo por defecto de Supabase solo envía
+  emails a las direcciones del equipo del proyecto.
+
+  Comprobar (solo lectura). Carga `.env.local` en la terminal sin imprimirlo y consulta los
+  ajustes públicos de Auth. No uses `cat .env.local` ni `env` para ver las variables: el archivo
+  tiene también otros tokens.
+
+  ```bash
+  set -a; . ./.env.local; set +a
+  curl -s "$NEXT_PUBLIC_SUPABASE_URL/auth/v1/settings" \
+    -H "apikey: $NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY"
+  ```
+
+  Tiene que responder `"disable_signup":true` y `"mailer_autoconfirm":false`.
+
+- [ ] **2. Longitud mínima y requisitos de contraseña.** *Authentication → Sign In / Providers →
+  Email* ([enlace](https://supabase.com/dashboard/project/uqupgywhmmdpjjenxywb/auth/providers?provider=Email)):
+  **Minimum password length** = `12` y **Password requirements** = *Lowercase, uppercase letters,
+  digits and symbols (recommended)*. En el mismo panel, activa **Require current password when
+  updating**.
+
+  Por qué: Supabase admite desde 6 caracteres y recomienda 8 o más. Para la cuenta que guarda
+  todo el negocio, 12 con los cuatro tipos de carácter es razonable, y los usuarios los crea una
+  persona, no un formulario público. Pedir la contraseña actual al cambiarla impide que alguien con
+  una sesión robada cambie la contraseña por la API (la app no tiene pantalla de cambio, así que
+  no rompe nada).
+
+  Una contraseña que no cumple los requisitos **solo se rechaza al crearla o cambiarla**, también
+  al crear usuarios desde el panel. Una contraseña existente que no los cumpla no se bloquea: al
+  entrar, Supabase la comprueba y solo lo indica en la respuesta (`weak_password`), que la app no
+  usa. La contraseña del usuario de prueba (tabla de arriba) tiene 12 caracteres y los cuatro
+  tipos, así que cumple estos valores.
+  La del usuario E2E (`E2E_PASSWORD`) no está en el repositorio: si es más débil, los tests
+  siguen entrando, pero conviene cambiarla por una que cumpla y actualizar el secreto.
+
+  Comprobar (solo lectura): vuelve a abrir el panel y confirma que los valores se guardaron.
+
+- [ ] **3. Protección de contraseñas filtradas.** En el mismo panel *Email*, activa
+  **Prevent use of leaked passwords** (*Authentication → Attack Protection* también lo muestra y
+  enlaza aquí). Rechaza contraseñas que aparecen en filtraciones conocidas (HaveIBeenPwned) al
+  crearlas o cambiarlas.
+
+  **Solo está disponible en el plan Pro o superior, y no sabemos en qué plan está el proyecto:**
+  compruébalo antes (ver la introducción). En el plan gratuito el interruptor no se puede activar
+  y el aviso `auth_leaked_password_protection` de los advisors se queda: es un aviso conocido y
+  aceptado, no un fallo de la app.
+
+  Igual que en el punto 2, las contraseñas que ya existen no se bloquean: al entrar, Supabase las
+  comprueba y, si están filtradas, solo lo indica en la respuesta (`weak_password`), que la app no
+  usa. Solo se rechazan al crear o cambiar una contraseña.
+
+  Comprobar (solo lectura):
+
+  ```bash
+  supabase db advisors --linked --type security
+  ```
+
+  `auth_leaked_password_protection` ya no aparece. Los tres avisos de `crear_pedido`,
+  `cancelar_pedido` y `enviar_pedido` siguen, porque son el diseño de las funciones de pedidos.
+
+- [ ] **4. Límites de intentos.** *Authentication → Rate Limits*
+  ([enlace](https://supabase.com/dashboard/project/uqupgywhmmdpjjenxywb/auth/rate-limits)).
+
+  Ojo con los nombres: el login con contraseña **no** lo limita *Rate limit for sign-ups and
+  sign-ins* (ese cubre registro, enlaces mágicos, códigos por email, recuperación, reenvío de
+  emails y la actualización del usuario, cambio de contraseña incluido), sino
+  **Rate limit for token refreshes**, que comparte con la renovación de sesiones. Valores:
+
+  - **Rate limit for token refreshes:** deja el valor por defecto (150 cada 5 minutos por IP).
+    No lo bajes de 60: como Supabase ve la IP del servidor, un atacante que machaque el
+    formulario agotaría el cupo y dejaría fuera también al usuario de verdad, y los E2E
+    (unos 13 inicios de sesión, más las renovaciones) se quedarían sin margen.
+  - **Rate limit for sign-ups and sign-ins:** `10` cada 5 minutos. La app no usa esas rutas;
+    con el registro cerrado, solo sirve para frenar abusos de la API.
+  - **Rate limit for sending emails** y **Rate limit for token verifications:** como están.
+  - **Enable IP address forwarding:** desactivado. Solo funciona si el servidor llama a Supabase
+    con la clave secreta, y Inventa nunca la usa.
+
+  Lo que esto **no** hace: Supabase no bloquea una cuenta tras N contraseñas fallidas; limita por
+  IP. La defensa real contra la fuerza bruta es la contraseña larga del punto 2 (y, más adelante,
+  CAPTCHA o MFA).
+
+  Comprobar: el panel muestra los valores guardados, y `npm run test:e2e` sigue pasando. Los
+  E2E crean y cancelan pedidos en producción: lee antes
+  [«Antes de activar los tests E2E en CI»](#antes-de-activar-los-tests-e2e-en-ci) y, si usas el
+  usuario de prueba, recarga después los datos de demostración.
+
+- [ ] **5. CAPTCHA: no activar todavía.** El interruptor **Enable Captcha protection** está en
+  *Authentication → Attack Protection* ([enlace](https://supabase.com/dashboard/project/uqupgywhmmdpjjenxywb/auth/protection);
+  la documentación lo llama *Bot and Abuse Protection*). Déjalo **desactivado**.
+
+  Por qué: con CAPTCHA activado, Supabase exige un token de CAPTCHA también en el login con
+  contraseña, y la app no lo envía. Nadie podría entrar, tampoco los E2E. Activarlo necesita antes
+  un cambio en la app: el widget (hCaptcha o Cloudflare Turnstile) en `/login`, pasar
+  `captchaToken` a `signInWithPassword`, permitir el dominio del proveedor en la CSP de
+  `next.config.ts` y usar sus claves de prueba en los E2E.
+
+  Comprobar: entrar con el usuario de prueba funciona.
+
+- [ ] **6. MFA (TOTP): opcional, y hoy no protege nada.** *Authentication → Multi-Factor*
+  ([enlace](https://supabase.com/dashboard/project/uqupgywhmmdpjjenxywb/auth/mfa)), opción
+  **TOTP (App Authenticator)**. Según Supabase, TOTP es gratuito y ya viene activado en todos los
+  proyectos, así que no hay nada que activar.
+
+  Lo honesto: tener TOTP activado en el panel **no añade seguridad** por sí solo. Inventa no tiene
+  pantalla para dar de alta un factor, ni paso de verificación después de la contraseña, ni
+  comprueba el nivel de la sesión (`aal2`) en `src/proxy.ts`, en las páginas o en las políticas de
+  RLS. Para que MFA proteja algo haría falta una tarea nueva con: alta del factor
+  (`supabase.auth.mfa.enroll`, código QR y verificación), un paso de verificación tras el login
+  (`mfa.challenge` y `mfa.verify`), redirigir a ese paso cuando
+  `mfa.getAuthenticatorAssuranceLevel()` indique que falta, y políticas RLS restrictivas que exijan
+  `(select auth.jwt()->>'aal') = 'aal2'` a quien tenga un factor verificado.
+
+  Comprobar: el panel muestra el estado de TOTP. No cambies nada aquí hasta que exista esa tarea.
+
+- [ ] **7. Sesiones y enlaces de email.** Parte de este punto depende del plan, que no
+  conocemos: compruébalo antes (ver la introducción). *Authentication → Sessions*
+  ([enlace](https://supabase.com/dashboard/project/uqupgywhmmdpjjenxywb/auth/sessions)): activa
+  **Detect and revoke potentially compromised refresh tokens** si no lo está y deja
+  **Access token expiry time** en 3600 segundos (lo que recomienda el panel).
+  **Time-box user sessions** e **Inactivity timeout** solo se pueden configurar en el plan Pro o
+  superior; si lo tienes, un *Inactivity timeout* de unas 8 horas obliga a volver a entrar tras una jornada sin
+  uso. En *Sign In / Providers → Email*, **Email OTP expiration** a 3600 segundos o menos (la lista
+  de producción de Supabase lo pide; también fija la caducidad de los enlaces de confirmación,
+  recuperación e invitación) y, como la app no los usa, puedes desactivar
+  **Enable magic links and email OTP**.
+
+  Comprobar: vuelve a abrir cada panel y confirma los valores guardados; entrar con el usuario de
+  prueba sigue funcionando.
+
+- [ ] **8. Comprobación final.** Entra en <https://inventa-rosy.vercel.app/login> con el usuario
+  de prueba, ejecuta `npm run test:e2e` y vuelve a pasar
+  `supabase db advisors --linked --type security`. Si los E2E han usado el usuario de prueba,
+  recarga los datos de demostración (`supabase db query --linked -f supabase/seed_demo.sql`; ver
+  [«Antes de activar los tests E2E en CI»](#antes-de-activar-los-tests-e2e-en-ci)).

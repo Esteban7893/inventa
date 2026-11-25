@@ -9,14 +9,16 @@ on:
 permissions:
   contents: read
 
-concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+# La concurrencia va por job, no por workflow: una ejecución nueva cancela los jobs viejos de
+# Calidad y Secretos del mismo PR, pero nunca un E2E a medias (dejaría pedidos sin cancelar).
 
 jobs:
   calidad:
     name: Calidad
     runs-on: ubuntu-latest
+    concurrency:
+      group: ${{ github.workflow }}-${{ github.ref }}-calidad
+      cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
     timeout-minutes: 15
     steps:
       - name: Checkout
@@ -51,6 +53,9 @@ jobs:
   secretos:
     name: Secretos
     runs-on: ubuntu-latest
+    concurrency:
+      group: ${{ github.workflow }}-${{ github.ref }}-secretos
+      cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
     timeout-minutes: 10
     env:
       # gitleaks-action solo escanea el rango del evento con --first-parent --no-merges:
@@ -103,6 +108,11 @@ jobs:
     needs: [calidad, e2e-config]
     if: needs.e2e-config.outputs.enabled == 'true'
     runs-on: ubuntu-latest
+    # Un solo E2E a la vez en todo el repositorio (comparten usuario y datos) y sin cancelarlo
+    # a medias: la limpieza de pedidos se hace al final de cada test.
+    concurrency:
+      group: ${{ github.workflow }}-e2e
+      cancel-in-progress: false
     timeout-minutes: 30
     steps:
       - name: Checkout
@@ -136,10 +146,13 @@ jobs:
           E2E_EMAIL: ${{ secrets.E2E_EMAIL }}
           E2E_PASSWORD: ${{ secrets.E2E_PASSWORD }}
 
-      - name: Subir informe de Playwright si falla
+      # Solo las capturas: error-context.md y las trazas guardan lo tecleado (la contraseña) y
+      # las cookies de sesión. El detalle de cada fallo está en el log, con los secretos ocultos.
+      - name: Subir capturas de Playwright si falla
         if: failure()
         uses: actions/upload-artifact@v7
         with:
-          name: playwright-report
-          path: playwright-report/
+          name: playwright-capturas
+          path: test-results/**/*.png
+          if-no-files-found: ignore
           retention-days: 7

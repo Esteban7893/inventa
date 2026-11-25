@@ -40,13 +40,16 @@ Encargo completo, autocontenido, en `docs/tareas/produccion-bloques-1-y-2.md`
 - [x] **T7 — Migraciones con historial.** `supabase link` + `migration repair` de 0001/0002;
   a partir de aquí solo `supabase db push`.
 - [x] **T8 — Tipos generados.** `supabase gen types` → `src/lib/database.types.ts`.
-- [x] **T9 — Tests de base de datos.** pgTAP en `supabase/tests/` (las 27 verificaciones de T2).
+- [x] **T9 — Tests de base de datos.** pgTAP en `supabase/tests/` (las 27 verificaciones de T2,
+  más acceso de `anon`, aislamiento, reglas y esquema de seguridad: 90 pruebas en 4 archivos).
 - [x] **T10 — Tests E2E.** Playwright en `e2e/` con los flujos críticos.
-- [ ] **T11 — Consultas que escalan.** Paginación, agregados del panel en SQL, índices.
-- [ ] **T12 — Cabeceras de seguridad.** HSTS, CSP (primero report-only) y compañía.
-- [ ] **T13 — Pedidos idempotentes.** Clave de idempotencia en `crear_pedido`.
-- [ ] **T14 — Movimientos de stock.** Tabla de auditoría alimentada por triggers.
-- [ ] **T15 — Endurecer el acceso.** Ajustes de Auth que hace el humano, documentados.
+- [x] **T11 — Consultas que escalan.** Paginación, agregados del panel en SQL, índices.
+- [x] **T12 — Cabeceras de seguridad.** HSTS, CSP (primero report-only) y compañía.
+- [x] **T13 — Pedidos idempotentes.** Clave de idempotencia en `crear_pedido`.
+- [x] **T14 — Movimientos de stock.** Tabla de auditoría alimentada por triggers.
+- [x] **T15 — Endurecer el acceso.** Ajustes de Auth que hace el humano, documentados (la lista está hecha; aplicarla es del humano).
+- [x] **T16 — Sin desbordamiento a 375 px por textos ocultos.** Los `sr-only` de las tablas ("Sin teléfono", "Sin SKU") ensanchaban el documento (nota 1 de T14 r3).
+- [x] **T17 — Sin desbordamiento a 375 px por palabras largas.** Los textos que repiten lo buscado o un nombre (estado vacío de las búsquedas, «N productos con «…»», títulos de fichas) se parten en vez de ensanchar la página (nota 2 de T16 r1).
 
 ## Decisiones del orquestador
 
@@ -80,6 +83,139 @@ Encargo completo, autocontenido, en `docs/tareas/produccion-bloques-1-y-2.md`
   interpreta así: la app solo lee las dos variables `NEXT_PUBLIC_*`; `SUPABASE_PROJECT_REF` no es
   un secreto y solo la usa esa herramienta. Los `| null` defensivos de los objetos anidados de las
   páginas se quedan como están (quitarlos cambia la interfaz y no es parte de T8).
+- **T9 (ronda 2) — alcance de los tests de esquema.** `public.rls_auto_enable()` es de Supabase
+  (`security definer`, `search_path = pg_catalog`): los tests de D8 la excluyen de la regla literal
+  `search_path = ''`, pero le exigen `search_path` fijo y que nadie de la API pueda ejecutarla.
+  `npm run test:db` no entra en CI de momento: necesitaría un token de Supabase como secreto de
+  GitHub, y eso lo decide el humano.
+- **T10 (ronda 3) — qué significa «dejar los datos como estaban» (D27).** Los pedidos no se pueden
+  borrar por diseño (D7), así que un test E2E que crea un pedido lo cancela: el stock vuelve a su
+  valor y el pedido queda cancelado en el listado. Por eso el seed se recarga antes de cada
+  despliegue y, si algún día se activan los E2E en CI, se recomienda un usuario E2E propio. En CI
+  el artefacto de Playwright solo lleva capturas (el informe HTML y las trazas guardarían la
+  contraseña del usuario E2E en un repositorio público), y el job E2E tiene su propio grupo de
+  concurrencia sin cancelación; `Calidad` y `Secretos` siguen cancelando las ejecuciones viejas.
+- **T11–T14 — migraciones en dos fases.** La app de la rama, sus E2E, los tests pgTAP nuevos y
+  `npm run db:types` necesitan que la migración ya exista en Supabase, pero la regla de T7 dice que
+  se aplica cuando Testing aprueba. Decisión: en las tareas con migración, Testing revisa primero
+  **solo la migración** (una ronda propia: la ejecuta con sus tests dentro de
+  `begin … rollback`, fuera del repositorio). Si la aprueba, el orquestador hace `supabase db push`,
+  pasa los advisors y regenera los tipos; después Testing hace la revisión completa en la ronda
+  siguiente, con E2E. Desde ese momento la migración es inmutable: cualquier arreglo va en una
+  migración nueva. Sigue valiendo que cada migración tiene que ser compatible con el código de `main`.
+- **T11 — borrador de otra herramienta.** Gemini dejó sin aplicar un borrador de T11
+  (`20261124114049_consultas_escalables.sql` y `02_consultas_y_permisos.sql`). Develop lo usa solo
+  como referencia: la migración y los tests de T11 son nuevos y pasan por el bucle completo.
+- **T11 (ronda 1) — colación de `nombre`.** Para paginar productos y clientes en SQL sin cambiar
+  el orden que ve hoy el usuario (`Intl.Collator("es", { sensitivity: "base", numeric: true })`: «nata, Nube, Ñandú»,
+  «Item 2, Item 10»), la migración crea la colación ICU `public.es_natural` y la pone en
+  `productos.nombre` y `clientes.nombre`. Es el único cambio de T11 que no se limita a añadir; se
+  acepta porque la colación es determinista (la igualdad sigue siendo byte a byte), `ilike` sigue
+  funcionando, el código de `main` no ordena por `nombre` en SQL y las tablas son pequeñas (el
+  bloqueo al reconstruir los índices es breve). Los índices `*_owner_id_idx` antiguos se mantienen,
+  aunque los nuevos los cubren, para no quitar nada en esta migración.
+- **T11 — migración aplicada.** Tras el APROBADO de la ronda 2 (solo base de datos), el orquestador
+  aplicó `20261124144658_consultas_escalables.sql` con `supabase db push` y regeneró
+  `database.types.ts`. Advisors: los avisos `authenticated_security_definer_function_executable` de
+  `crear_pedido`, `cancelar_pedido` y `enviar_pedido` son el diseño de D8 (ya estaban antes);
+  `auth_leaked_password_protection` es un ajuste de Auth que corresponde a T15; los 5 `unused_index`
+  son los índices nuevos, que la fase 2 empieza a usar. Ninguno vuelve a Develop.
+- **T11 (ronda 3) — límites de la interfaz.** Productos y clientes se paginan por número de página
+  (50 por página, `offset`) y no por cursor: el coste está acotado y un cursor por `nombre` en un
+  `or` de PostgREST sería frágil. Pedidos sí usa cursor `(created_at, id)`, y «← Los más recientes»
+  vuelve a la primera página porque `pedidos_pagina` solo avanza hacia atrás en el tiempo. Los
+  desplegables de nuevo pedido traen como mucho 500 clientes y 500 productos (`ORDER_FORM_OPTIONS`)
+  con un aviso si hay más: es un límite funcional aceptado para el tamaño de esta app; un selector
+  con búsqueda en el servidor queda como mejora futura. La búsqueda (`ilike`) distingue tildes y
+  un `*` actúa como comodín de PostgREST; se acepta porque solo afecta a las filas del propio
+  usuario (RLS) y no produce errores.
+- **T12 (ronda 1) — CSP sin nonce.** La guía de CSP de Next 16 exige renderizado dinámico para los
+  nonces y dice que son incompatibles con el prerenderizado parcial, que este proyecto usa
+  (`cacheComponents: true`). Decisión: CSP estática en `headers()` de `next.config.ts`, como en el
+  apartado «Without Nonces» de la guía, con `script-src 'self' 'unsafe-inline'` (los scripts en
+  línea de Next y React cambian en cada petición y no se pueden fijar con hashes). Todo lo demás
+  queda en `'self'` o `'none'`, sin `'unsafe-eval'` en producción y sin `'unsafe-inline'` en
+  estilos. Se hace en dos pasos dentro de la misma ronda: primero `Content-Security-Policy-Report-Only`
+  (commit propio) y, tras recorrer todas las rutas sin violaciones, obligatoria.
+  La SRI experimental (`experimental.sri`) no se usa: solo añade `integrity` a los scripts externos,
+  y los scripts en línea de Next seguirían necesitando `'unsafe-inline'`. En desarrollo la CSP queda
+  en report-only, porque no se ha podido probar el HMR con la política obligatoria.
+- **T13 — migración aplicada.** Tras el APROBADO de la ronda 2 (solo base de datos), el orquestador
+  aplicó `20261124163811_pedidos_idempotentes.sql` con `supabase db push` (queda una sola
+  `crear_pedido(uuid, jsonb, uuid)`) y regeneró `database.types.ts`. Advisors: solo los avisos de
+  siempre (las tres funciones `security definer` de D8 y la protección de contraseñas de T15).
+- **T13 (ronda 3) — vida de la clave.** La clave vive lo que dura el montaje del formulario: se
+  renueva tras crear el pedido o tras `CLAVE_REUTILIZADA`, y se conserva tras un error de la acción
+  o una falta de respuesta, para que reintentar sea seguro. Si la persona recarga la página tras
+  perder la respuesta, el reenvío lleva otra clave y podría duplicar el pedido; se acepta como límite
+  conocido (guardar la clave en el navegador queda como mejora futura).
+- **T14 (ronda 1) — diseño de `movimientos_stock`.** Todo lo registran triggers; `crear_pedido` y
+  `cancelar_pedido` no cambian. El motivo `ajuste` se distingue de los de pedido por `current_user`
+  (dentro de las funciones definer es su dueño), que no se puede cambiar desde la API. Decisiones
+  del orquestador sobre las dudas de Develop: (1) la migración registra un `ajuste` de saldo inicial
+  por cada producto existente, y el alta de un producto con stock registra otro, para que la suma de
+  deltas sea siempre el stock; (2) las claves ajenas a `productos` y `pedidos` son `on delete
+  cascade` (un producto con pedidos sigue sin poder borrarse por `pedido_lineas`, y los pedidos no
+  se borran desde la API); (3) `id` es `bigint` de identidad para fijar el orden dentro de una misma
+  transacción, aceptando que deja intuir el número total de movimientos; la app no lo muestra;
+  (4) en la fase 2 el seed alinea la fecha de los movimientos con la de sus pedidos. Los cambios en
+  `04_esquema_seguridad.sql` hacen que 04 falle hasta que se aplique la migración, como 07.
+- **T14 — migración aplicada.** Tras el APROBADO de la ronda 1 (solo base de datos), el orquestador
+  aplicó `20261124201320_movimientos_stock.sql` con `supabase db push` (saldo inicial: 10 `ajuste`
+  que suman 151, el stock total) y regeneró `database.types.ts`. Advisors: el aviso INFO
+  `unindexed_foreign_keys` de `movimientos_stock_pedido_fkey (pedido_id, owner_id)` vuelve a Develop:
+  en la fase 2 añade una migración nueva que solo cree ese índice. Los `unused_index` son los índices
+  nuevos, que la fase 2 empieza a usar. **Excepción a D8:** `movimientos_stock_registrar_ajuste` es
+  `security definer` sin comprobar `auth.uid()`, porque D7 impide escribir la tabla desde la API; es
+  una función de trigger que nadie de la API puede ejecutar y que escribe con `new.owner_id` (04#20,
+  #22, #26 y #27 lo comprueban). **Límite conocido:** un cambio de stock hecho como `postgres` fuera
+  de las funciones (editor de Supabase, SQL a mano) no deja movimiento; cualquier función `security
+  definer` nueva que cambie el stock tiene que registrar el suyo.
+- **T14 — fase 2 (rondas 2 y 3).** La r2 suspendió por D18: con un total múltiplo exacto del tamaño
+  de página, la página siguiente a la última daba 200 con 0 filas (PostgREST solo devuelve `PGRST103`
+  si el desplazamiento es mayor que el total) y la ficha mostraba «Aún no hay movimientos» y «Página
+  2 de 1». Decisión: `isPageOutOfRange` en `listing.ts` también para productos y clientes, que tenían
+  el mismo defecto con 50 filas. La r3 aprobó. Después, el orquestador aplicó
+  `20261124205448_indice_movimientos_stock_pedido.sql`: pgTAP 01–07 en verde contra el remoto (07
+  53/53), advisors de rendimiento sin avisos y de seguridad solo los conocidos (las tres funciones
+  `security definer` de pedidos y la protección de contraseñas filtradas, que es T15); los tipos no
+  cambian. **Quedan abiertas** (notas de r2/r3, no bloquean): en `/clientes` a 375 px, el
+  `sr-only` «Sin teléfono» (y quizá «Sin SKU» en productos y panel) ensancha el documento porque
+  ninguna celda es `relative`; el test 1 de `e2e/movimientos.spec.ts` recorre todas las páginas de
+  un producto cuyos movimientos solo crecen con cada ejecución (se reinicia al recargar el seed) y
+  no llega al caso del límite; el ancla `#movimientos` no salta en carga directa por el streaming; y
+  07#03 puede volver a `set_eq` ahora que el índice está aplicado.
+- **T15 — ajustes de Auth (los hace el humano).** La lista está en el README («Endurecer el acceso
+  (Supabase Auth)»); el equipo no cambia ningún ajuste de la cuenta. Ninguna directriz D1–D30 cubre la
+  exactitud de una documentación, así que Testing la revisó en una fila «T15 (encargo)» contra el
+  código de GoTrue y de Studio; el orquestador la da por válida. Decisiones de la lista: (1) cerrar el
+  registro público, que estaba abierto (`disable_signup: false`) y la app no usa; (2) CAPTCHA
+  desactivado, porque Supabase también lo exige en el login con contraseña y la app no envía el token
+  (activarlo sería una tarea de app: widget, `captchaToken`, CSP y claves de prueba en los E2E); (3)
+  «Rate limit for token refreshes», que es el que limita `/token`, se deja en su valor por defecto,
+  porque Supabase ve la IP del servidor (login en Server Action) y bajarlo podría bloquear al usuario
+  real y a los E2E; (4) MFA TOTP viene activado pero no protege nada sin pantallas de alta y
+  verificación ni comprobación de `aal2`: queda como mejora futura; (5) en el plan gratuito no hay
+  protección de contraseñas filtradas, y el aviso `auth_leaked_password_protection` se acepta como
+  conocido, igual que los tres de las funciones `security definer` de pedidos.
+- **T16 — `relative` en la región de `LedgerTable` y limpieza de los E2E.** Los `sr-only` de las
+  tablas escapaban de la región con scroll porque no estaba posicionada; ahora es el bloque
+  contenedor y los recorta, en todas las tablas a la vez. La r1 suspendió por D27: si el test se
+  pasaba de tiempo durante una navegación, el cuerpo abandonado abortaba la navegación de la
+  limpieza en el mismo `page` y el cliente temporal se quedaba. Decisión: toda limpieza de los E2E
+  (`RecordCleanup` y `OrderCleanup`) trabaja en una página propia (`withCleanupPage`) y reintenta
+  cada paso (`retryCleanup`). **Mutantes de maquetación:** en este proyecto `next build --webpack`
+  genera la app sin utilidades de Tailwind (solo se procesan con el loader de Turbopack), así que
+  los mutantes que dependen del CSS se construyen con `next build` normal en una copia. Quedan como
+  notas de T16 r2: un cuerpo abandonado podría crear un dato después de la última comprobación de la
+  limpieza (no se vio en 17 cortes), y `retryCleanup` no incluye el último error en el mensaje.
+- **T17 — palabras largas.** `overflow-wrap: break-word` en `body` (no reduce el ancho mínimo, así
+  que con datos normales no cambia nada: 26/26 capturas idénticas), `wrap-anywhere` en `EmptyState` y
+  `grid-cols-1` en el destinatario del albarán. Las celdas de tabla no se parten: su región tiene
+  scroll propio y no ensancha la página (D19 lo permite). Notas de T17 r1 que no bloquean: el E2E
+  escribe en el DOM el nombre y el email largos del albarán (no se puede crear un pedido sin dejar
+  datos), la comprobación de `/pedidos/nuevo` no discrimina, y una cifra irreal del panel (9+
+  caracteres) ahora se parte dentro del número en vez de salirse de su celda.
 - **T9 — ejecución de pgTAP sin Docker.** `supabase test db --linked` también invoca un
   contenedor Docker (`pg_prove`) y falla en máquinas sin Docker en marcha. Decisión: habilitar
   `pgtap` en el esquema `extensions` mediante migración (`supabase migration new`), escribir los
