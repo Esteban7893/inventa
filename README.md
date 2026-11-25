@@ -10,9 +10,9 @@ La interfaz imita un albarán o libro de almacén impreso (papel, tinta, reglas 
 
 ## Usuario de prueba
 
-| Email | Contraseña |
-|---|---|
-| `prueba@inventa.test` | `Albaran-2026` |
+- **Email:** `prueba@inventa.test`
+- **Contraseña:** se entrega aparte, junto al enlace de la app. No está en el repositorio, que es
+  público: así nadie que lo lea puede entrar y cambiar los datos de demostración.
 
 Es un usuario ficticio de demostración, con productos, clientes y pedidos ya cargados.
 
@@ -485,8 +485,8 @@ Lista de comprobación:
   Una contraseña que no cumple los requisitos **solo se rechaza al crearla o cambiarla**, también
   al crear usuarios desde el panel. Una contraseña existente que no los cumpla no se bloquea: al
   entrar, Supabase la comprueba y solo lo indica en la respuesta (`weak_password`), que la app no
-  usa. La contraseña del usuario de prueba (tabla de arriba) tiene 12 caracteres y los cuatro
-  tipos, así que cumple estos valores.
+  usa. La contraseña del usuario de prueba tampoco está en el repositorio: al cambiarla, elige
+  una de 12 caracteres o más con los cuatro tipos, para que cumpla estos valores.
   La del usuario E2E (`E2E_PASSWORD`) no está en el repositorio: si es más débil, los tests
   siguen entrando, pero conviene cambiarla por una que cumpla y actualizar el secreto.
 
