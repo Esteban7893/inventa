@@ -1,5 +1,5 @@
 import { test as base, expect, type Page } from "@playwright/test";
-import { assertNoHorizontalOverflow, gotoHydrated, login } from "./helpers";
+import { assertNoHorizontalOverflow, gotoHydrated, login, retryCleanup, withCleanupPage } from "./helpers";
 
 type TemporaryKind = "cliente" | "producto";
 
@@ -24,10 +24,25 @@ async function findRecordHrefs(page: Page, kind: TemporaryKind, name: string): P
   return hrefs;
 }
 
+/** Borra las fichas con ese nombre exacto y comprueba que no queda ninguna. Se puede repetir. */
+async function deleteRecords(page: Page, kind: TemporaryKind, name: string): Promise<void> {
+  const { path, deleteLabel } = LISTS[kind];
+  for (const href of await findRecordHrefs(page, kind, name)) {
+    await gotoHydrated(page, href);
+    await page.getByRole("button", { name: deleteLabel }).click();
+    await page.getByRole("button", { name: "Sí, borrar" }).click();
+    await expect(page).toHaveURL(new RegExp(`${path}$`));
+  }
+  if ((await findRecordHrefs(page, kind, name)).length > 0) {
+    throw new Error(`Sigue habiendo ${kind} «${name}»`);
+  }
+}
+
 /**
  * Borra al terminar los clientes y productos temporales que haya creado el test, también si
- * falla a medias. Los busca por nombre: el alta redirige al listado y el test puede fallar
- * antes de leer el id.
+ * falla a medias o se pasa de tiempo: en una página propia (el cuerpo abandonado de un test
+ * cortado por tiempo sigue navegando en la suya) y con reintentos. Los busca por nombre: el
+ * alta redirige al listado y el test puede fallar antes de leer el id.
  */
 class RecordCleanup {
   private readonly records: Array<{ kind: TemporaryKind; name: string }> = [];
@@ -37,22 +52,15 @@ class RecordCleanup {
   }
 
   async run(page: Page): Promise<void> {
-    const left: string[] = [];
-    for (const { kind, name } of this.records) {
-      try {
-        for (const href of await findRecordHrefs(page, kind, name)) {
-          await gotoHydrated(page, href);
-          await page.getByRole("button", { name: LISTS[kind].deleteLabel }).click();
-          await page.getByRole("button", { name: "Sí, borrar" }).click();
-          await expect(page).toHaveURL(new RegExp(`${LISTS[kind].path}$`));
+    const left = await withCleanupPage(page, async (cleanupPage) => {
+      const notDeleted: string[] = [];
+      for (const { kind, name } of this.records) {
+        if (!(await retryCleanup(() => deleteRecords(cleanupPage, kind, name)))) {
+          notDeleted.push(`${kind} «${name}»`);
         }
-        if ((await findRecordHrefs(page, kind, name)).length > 0) {
-          left.push(`${kind} «${name}»`);
-        }
-      } catch {
-        left.push(`${kind} «${name}»`);
       }
-    }
+      return notDeleted;
+    });
 
     if (left.length > 0) {
       throw new Error(`No se han podido borrar datos creados por los tests E2E: ${left.join(", ")}. Bórralos a mano desde la app.`);

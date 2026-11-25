@@ -201,10 +201,45 @@ export async function cancelOrderIfPending(page: Page, orderHref: string): Promi
   return true;
 }
 
+/** Veces que la limpieza intenta cada paso antes de darlo por perdido. */
+const CLEANUP_ATTEMPTS = 3;
+
+/**
+ * Ejecuta la limpieza de un test en una página propia del mismo contexto (misma sesión) y la
+ * cierra al terminar. Si Playwright corta el test por tiempo, el cuerpo abandonado sigue
+ * ejecutándose sobre `page` y sus navegaciones abortarían las de la limpieza; en otra página
+ * no le afectan.
+ */
+export async function withCleanupPage<T>(page: Page, work: (cleanupPage: Page) => Promise<T>): Promise<T> {
+  const cleanupPage = await page.context().newPage();
+  try {
+    return await work(cleanupPage);
+  } finally {
+    await cleanupPage.close();
+  }
+}
+
+/**
+ * Intenta un paso de limpieza hasta `CLEANUP_ATTEMPTS` veces. El paso tiene que poder repetirse
+ * sin efectos de más (buscar de nuevo lo que falta y borrarlo o cancelarlo). Devuelve si se ha hecho.
+ */
+export async function retryCleanup(step: () => Promise<unknown>): Promise<boolean> {
+  for (let attempt = 1; attempt <= CLEANUP_ATTEMPTS; attempt += 1) {
+    try {
+      await step();
+      return true;
+    } catch {
+      // Se vuelve a intentar desde el principio del paso.
+    }
+  }
+  return false;
+}
+
 /**
  * Lleva la cuenta de los pedidos que puede haber creado un test y, al terminar, cancela los
  * que sigan pendientes. Se ejecuta como teardown del fixture, que Playwright corre con su
- * propio tiempo también cuando el test falla a medias o se pasa de tiempo.
+ * propio tiempo también cuando el test falla a medias o se pasa de tiempo, en una página propia
+ * y con reintentos (`withCleanupPage`, `retryCleanup`).
  */
 export class OrderCleanup {
   private readonly hrefs = new Set<string>();
@@ -238,25 +273,33 @@ export class OrderCleanup {
   }
 
   async run(page: Page): Promise<void> {
-    if (this.watched) {
-      await this.submission;
+    await this.submission;
+    const watched = this.watched;
+
+    const failed = await withCleanupPage(page, async (cleanupPage) => {
+      const notDone: string[] = [];
       // Por si algún pedido llegó a crearse pero el test falló antes de leer su URL (todos los
       // posteriores al último de antes del envío, por si un fallo creó más de uno).
-      for (const order of await readOrdersSince(page, this.watched.latestBefore)) {
-        if (order.customer === this.watched.customer) {
-          this.hrefs.add(order.href);
+      if (
+        watched &&
+        !(await retryCleanup(async () => {
+          for (const order of await readOrdersSince(cleanupPage, watched.latestBefore)) {
+            if (order.customer === watched.customer) {
+              this.hrefs.add(order.href);
+            }
+          }
+        }))
+      ) {
+        notDone.push(`los pedidos nuevos de «${watched.customer}» (no se ha podido leer /pedidos)`);
+      }
+
+      for (const href of this.hrefs) {
+        if (!(await retryCleanup(() => cancelOrderIfPending(cleanupPage, href)))) {
+          notDone.push(href);
         }
       }
-    }
-
-    const failed: string[] = [];
-    for (const href of this.hrefs) {
-      try {
-        await cancelOrderIfPending(page, href);
-      } catch {
-        failed.push(href);
-      }
-    }
+      return notDone;
+    });
 
     if (failed.length > 0) {
       throw new Error(

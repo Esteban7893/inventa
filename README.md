@@ -294,12 +294,13 @@ Hace falta Node.js 22 o posterior, la CLI de Supabase y un proyecto de Supabase.
    cancelación de pedidos con devolución de stock, rechazo por falta de stock, reinicio de
    formularios cancelados y ausencia de scroll horizontal a 375 px (también con un cliente sin
    teléfono y un producto sin SKU, que el test crea y borra al terminar, aunque falle).
-   Necesitan los datos de demostración (al menos dos productos, uno con stock 2 o más, un cliente y un pedido): si faltan,
-   fallan con un mensaje que lo dice. Cada test cancela al terminar los pedidos que haya creado,
-   también si falla a medias, y el stock vuelve a su valor; el pedido cancelado sí se queda en el
-   listado (ver «Antes de activar los tests E2E en CI»). El informe HTML local
-   (`playwright-report/`, ignorado por git) incluye lo tecleado en el login, contraseña incluida:
-   no lo compartas.
+   Necesitan los datos de demostración (al menos dos productos, uno con stock 2 o más, un
+   cliente y un pedido): si faltan, fallan con un mensaje que lo dice. Cada test cancela al
+   terminar los pedidos que haya creado, también si falla a medias o se pasa de tiempo (la
+   limpieza va en una página propia y reintenta), y el stock vuelve a su valor; el pedido
+   cancelado sí se queda en el listado (ver «Antes de activar los tests E2E en CI»). El informe
+   HTML local (`playwright-report/`, ignorado por git) incluye lo tecleado en el login,
+   contraseña incluida: no lo compartas.
 
 ## Producción
 
