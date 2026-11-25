@@ -47,7 +47,7 @@ Encargo completo, autocontenido, en `docs/tareas/produccion-bloques-1-y-2.md`
 - [x] **T12 — Cabeceras de seguridad.** HSTS, CSP (primero report-only) y compañía.
 - [x] **T13 — Pedidos idempotentes.** Clave de idempotencia en `crear_pedido`.
 - [x] **T14 — Movimientos de stock.** Tabla de auditoría alimentada por triggers.
-- [ ] **T15 — Endurecer el acceso.** Ajustes de Auth que hace el humano, documentados.
+- [x] **T15 — Endurecer el acceso.** Ajustes de Auth que hace el humano, documentados (la lista está hecha; aplicarla es del humano).
 
 ## Decisiones del orquestador
 
@@ -183,6 +183,19 @@ Encargo completo, autocontenido, en `docs/tareas/produccion-bloques-1-y-2.md`
   un producto cuyos movimientos solo crecen con cada ejecución (se reinicia al recargar el seed) y
   no llega al caso del límite; el ancla `#movimientos` no salta en carga directa por el streaming; y
   07#03 puede volver a `set_eq` ahora que el índice está aplicado.
+- **T15 — ajustes de Auth (los hace el humano).** La lista está en el README («Endurecer el acceso
+  (Supabase Auth)»); el equipo no cambia ningún ajuste de la cuenta. Ninguna directriz D1–D30 cubre la
+  exactitud de una documentación, así que Testing la revisó en una fila «T15 (encargo)» contra el
+  código de GoTrue y de Studio; el orquestador la da por válida. Decisiones de la lista: (1) cerrar el
+  registro público, que estaba abierto (`disable_signup: false`) y la app no usa; (2) CAPTCHA
+  desactivado, porque Supabase también lo exige en el login con contraseña y la app no envía el token
+  (activarlo sería una tarea de app: widget, `captchaToken`, CSP y claves de prueba en los E2E); (3)
+  «Rate limit for token refreshes», que es el que limita `/token`, se deja en su valor por defecto,
+  porque Supabase ve la IP del servidor (login en Server Action) y bajarlo podría bloquear al usuario
+  real y a los E2E; (4) MFA TOTP viene activado pero no protege nada sin pantallas de alta y
+  verificación ni comprobación de `aal2`: queda como mejora futura; (5) en el plan gratuito no hay
+  protección de contraseñas filtradas, y el aviso `auth_leaked_password_protection` se acepta como
+  conocido, igual que los tres de las funciones `security definer` de pedidos.
 - **T9 — ejecución de pgTAP sin Docker.** `supabase test db --linked` también invoca un
   contenedor Docker (`pg_prove`) y falla en máquinas sin Docker en marcha. Decisión: habilitar
   `pgtap` en el esquema `extensions` mediante migración (`supabase migration new`), escribir los

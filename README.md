@@ -122,6 +122,8 @@ Orquestador --tarea--> Develop --entrega--> Testing --informe--> Orquestador
 | T14 — Movimientos de stock | [r1](docs/revisiones/T14-r1.md) | APROBADO | Fase 1 (migración) |
 | T14 — Movimientos de stock | [r2](docs/revisiones/T14-r2.md) | SUSPENSO | Fase 2 (la app): con un total múltiplo exacto de 20, la página siguiente a la última decía «Aún no hay movimientos» y «Página 2 de 1» (D18) |
 | T14 — Movimientos de stock | [r3](docs/revisiones/T14-r3.md) | APROBADO | Fase 2 (la app) |
+| T15 — Endurecer el acceso | [r1](docs/revisiones/T15-r1.md) | SUSPENSO | La lista decía que las contraseñas existentes no se revisan, proponía una prueba que crea un usuario en producción y no decía que el equipo no ha visto el panel ni el plan del proyecto |
+| T15 — Endurecer el acceso | [r2](docs/revisiones/T15-r2.md) | APROBADO | |
 
 ### Fallos que encontró Testing y cómo se corrigieron
 
@@ -393,7 +395,7 @@ en el flujo normal no se usa `migration repair`. Al cerrar T7, `supabase migrati
 
 **Datos, no esquema.** Dos cosas sí ejecutan SQL contra la base de datos con
 `supabase db query --linked -f`, y ninguna cambia el esquema: la recarga de los datos de
-demostración (`supabase/seed_demo.sql`, solo la hace el orquestador) y `npm run test:db`
+demostración (`supabase/seed_demo.sql`, la hace el orquestador o el humano) y `npm run test:db`
 cuando no hay Docker (cada archivo de tests va en `begin; … rollback;` y no deja filas).
 
 Inventa trabaja con un único proyecto de Supabase. Si algún día se separa un entorno de
