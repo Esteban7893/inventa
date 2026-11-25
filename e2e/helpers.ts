@@ -274,13 +274,21 @@ export const test = base.extend<{ orderCleanup: OrderCleanup }>({
   },
 });
 
-export async function assertNoHorizontalOverflow(page: Page, routeLabel: string): Promise<void> {
+/**
+ * Falla si la página es más ancha que la ventana. Con `soft`, apunta el fallo y deja seguir el
+ * test (para ver todas las rutas que fallan, no solo la primera).
+ */
+export async function assertNoHorizontalOverflow(
+  page: Page,
+  routeLabel: string,
+  { soft = false }: { soft?: boolean } = {},
+): Promise<void> {
   const { scrollWidth, clientWidth } = await page.evaluate(() => ({
     scrollWidth: document.documentElement.scrollWidth,
     clientWidth: document.documentElement.clientWidth,
   }));
 
-  expect(
+  (soft ? expect.soft : expect)(
     scrollWidth,
     `La ruta ${routeLabel} tiene scroll horizontal (${scrollWidth}px > ${clientWidth}px)`,
   ).toBeLessThanOrEqual(clientWidth);

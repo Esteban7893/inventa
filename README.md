@@ -292,8 +292,9 @@ Hace falta Node.js 22 o posterior, la CLI de Supabase y un proyecto de Supabase.
    `npx playwright install chromium` y define `E2E_EMAIL` y `E2E_PASSWORD` (en `.env.local` o en
    el entorno; nunca en el código). Las pruebas comprueban redirección y login, creación y
    cancelación de pedidos con devolución de stock, rechazo por falta de stock, reinicio de
-   formularios cancelados y ausencia de scroll horizontal a 375 px. Necesitan los datos de
-   demostración (al menos dos productos, uno con stock 2 o más, un cliente y un pedido): si faltan,
+   formularios cancelados y ausencia de scroll horizontal a 375 px (también con un cliente sin
+   teléfono y un producto sin SKU, que el test crea y borra al terminar, aunque falle).
+   Necesitan los datos de demostración (al menos dos productos, uno con stock 2 o más, un cliente y un pedido): si faltan,
    fallan con un mensaje que lo dice. Cada test cancela al terminar los pedidos que haya creado,
    también si falla a medias, y el stock vuelve a su valor; el pedido cancelado sí se queda en el
    listado (ver «Antes de activar los tests E2E en CI»). El informe HTML local
