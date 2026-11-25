@@ -48,7 +48,7 @@ Encargo completo, autocontenido, en `docs/tareas/produccion-bloques-1-y-2.md`
 - [x] **T13 — Pedidos idempotentes.** Clave de idempotencia en `crear_pedido`.
 - [x] **T14 — Movimientos de stock.** Tabla de auditoría alimentada por triggers.
 - [x] **T15 — Endurecer el acceso.** Ajustes de Auth que hace el humano, documentados (la lista está hecha; aplicarla es del humano).
-- [ ] **T16 — Sin desbordamiento a 375 px por textos ocultos.** Los `sr-only` de las tablas ("Sin teléfono", "Sin SKU") ensanchaban el documento (nota 1 de T14 r3).
+- [x] **T16 — Sin desbordamiento a 375 px por textos ocultos.** Los `sr-only` de las tablas ("Sin teléfono", "Sin SKU") ensanchaban el documento (nota 1 de T14 r3).
 
 ## Decisiones del orquestador
 
@@ -197,6 +197,17 @@ Encargo completo, autocontenido, en `docs/tareas/produccion-bloques-1-y-2.md`
   verificación ni comprobación de `aal2`: queda como mejora futura; (5) en el plan gratuito no hay
   protección de contraseñas filtradas, y el aviso `auth_leaked_password_protection` se acepta como
   conocido, igual que los tres de las funciones `security definer` de pedidos.
+- **T16 — `relative` en la región de `LedgerTable` y limpieza de los E2E.** Los `sr-only` de las
+  tablas escapaban de la región con scroll porque no estaba posicionada; ahora es el bloque
+  contenedor y los recorta, en todas las tablas a la vez. La r1 suspendió por D27: si el test se
+  pasaba de tiempo durante una navegación, el cuerpo abandonado abortaba la navegación de la
+  limpieza en el mismo `page` y el cliente temporal se quedaba. Decisión: toda limpieza de los E2E
+  (`RecordCleanup` y `OrderCleanup`) trabaja en una página propia (`withCleanupPage`) y reintenta
+  cada paso (`retryCleanup`). **Mutantes de maquetación:** en este proyecto `next build --webpack`
+  genera la app sin utilidades de Tailwind (solo se procesan con el loader de Turbopack), así que
+  los mutantes que dependen del CSS se construyen con `next build` normal en una copia. Quedan como
+  notas de T16 r2: un cuerpo abandonado podría crear un dato después de la última comprobación de la
+  limpieza (no se vio en 17 cortes), y `retryCleanup` no incluye el último error en el mensaje.
 - **T9 — ejecución de pgTAP sin Docker.** `supabase test db --linked` también invoca un
   contenedor Docker (`pg_prove`) y falla en máquinas sin Docker en marcha. Decisión: habilitar
   `pgtap` en el esquema `extensions` mediante migración (`supabase migration new`), escribir los

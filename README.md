@@ -124,6 +124,8 @@ Orquestador --tarea--> Develop --entrega--> Testing --informe--> Orquestador
 | T14 — Movimientos de stock | [r3](docs/revisiones/T14-r3.md) | APROBADO | Fase 2 (la app) |
 | T15 — Endurecer el acceso | [r1](docs/revisiones/T15-r1.md) | SUSPENSO | La lista decía que las contraseñas existentes no se revisan, proponía una prueba que crea un usuario en producción y no decía que el equipo no ha visto el panel ni el plan del proyecto |
 | T15 — Endurecer el acceso | [r2](docs/revisiones/T15-r2.md) | APROBADO | |
+| T16 — Sin desbordamiento a 375 px por textos ocultos | [r1](docs/revisiones/T16-r1.md) | SUSPENSO | La limpieza del E2E nuevo no borraba el cliente temporal si el test se pasaba de tiempo durante una navegación (D27) |
+| T16 — Sin desbordamiento a 375 px por textos ocultos | [r2](docs/revisiones/T16-r2.md) | APROBADO | |
 
 ### Fallos que encontró Testing y cómo se corrigieron
 
