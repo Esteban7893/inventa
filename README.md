@@ -124,6 +124,8 @@ Orquestador --tarea--> Develop --entrega--> Testing --informe--> Orquestador
 | T14 — Movimientos de stock | [r3](docs/revisiones/T14-r3.md) | APROBADO | Fase 2 (la app) |
 | T15 — Endurecer el acceso | [r1](docs/revisiones/T15-r1.md) | SUSPENSO | La lista decía que las contraseñas existentes no se revisan, proponía una prueba que crea un usuario en producción y no decía que el equipo no ha visto el panel ni el plan del proyecto |
 | T15 — Endurecer el acceso | [r2](docs/revisiones/T15-r2.md) | APROBADO | |
+| T16 — Sin desbordamiento a 375 px por textos ocultos | [r1](docs/revisiones/T16-r1.md) | SUSPENSO | La limpieza del E2E nuevo no borraba el cliente temporal si el test se pasaba de tiempo durante una navegación (D27) |
+| T16 — Sin desbordamiento a 375 px por textos ocultos | [r2](docs/revisiones/T16-r2.md) | APROBADO | |
 
 ### Fallos que encontró Testing y cómo se corrigieron
 
@@ -292,13 +294,15 @@ Hace falta Node.js 22 o posterior, la CLI de Supabase y un proyecto de Supabase.
    `npx playwright install chromium` y define `E2E_EMAIL` y `E2E_PASSWORD` (en `.env.local` o en
    el entorno; nunca en el código). Las pruebas comprueban redirección y login, creación y
    cancelación de pedidos con devolución de stock, rechazo por falta de stock, reinicio de
-   formularios cancelados y ausencia de scroll horizontal a 375 px. Necesitan los datos de
-   demostración (al menos dos productos, uno con stock 2 o más, un cliente y un pedido): si faltan,
-   fallan con un mensaje que lo dice. Cada test cancela al terminar los pedidos que haya creado,
-   también si falla a medias, y el stock vuelve a su valor; el pedido cancelado sí se queda en el
-   listado (ver «Antes de activar los tests E2E en CI»). El informe HTML local
-   (`playwright-report/`, ignorado por git) incluye lo tecleado en el login, contraseña incluida:
-   no lo compartas.
+   formularios cancelados y ausencia de scroll horizontal a 375 px (también con un cliente sin
+   teléfono y un producto sin SKU, que el test crea y borra al terminar, aunque falle).
+   Necesitan los datos de demostración (al menos dos productos, uno con stock 2 o más, un
+   cliente y un pedido): si faltan, fallan con un mensaje que lo dice. Cada test cancela al
+   terminar los pedidos que haya creado, también si falla a medias o se pasa de tiempo (la
+   limpieza va en una página propia y reintenta), y el stock vuelve a su valor; el pedido
+   cancelado sí se queda en el listado (ver «Antes de activar los tests E2E en CI»). El informe
+   HTML local (`playwright-report/`, ignorado por git) incluye lo tecleado en el login,
+   contraseña incluida: no lo compartas.
 
 ## Producción
 

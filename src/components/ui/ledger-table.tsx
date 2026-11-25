@@ -66,8 +66,10 @@ export function LedgerTable<Row>({
     return <>{empty}</>;
   }
 
+  // `relative`: la región es el bloque contenedor de los textos `sr-only` de la tabla (que son
+  // `position: absolute`); sin él escapan de su scroll y ensanchan la página en móvil.
   return (
-    <div role="region" aria-label={caption} tabIndex={0} className="-mx-4 overflow-x-auto px-4 sm:mx-0 sm:px-0">
+    <div role="region" aria-label={caption} tabIndex={0} className="relative -mx-4 overflow-x-auto px-4 sm:mx-0 sm:px-0">
       <table className={cx("w-full border-collapse text-left text-[15px]", MIN_WIDTH_CLASS[minWidth])}>
         <caption className="sr-only">{caption}</caption>
         <thead>
