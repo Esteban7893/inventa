@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { formatDate, formatDateTime, parseIsoDate } from "@/lib/domain/dates";
+import { formatDate, formatDateTime, formatTime, parseIsoDate } from "@/lib/domain/dates";
 
 describe("formatDate", () => {
   it("muestra la fecha en formato español, en la hora de Madrid", () => {
@@ -25,6 +25,24 @@ describe("formatDateTime", () => {
 
   it("rechaza un texto que no es una fecha", () => {
     expect(() => formatDateTime("2026-13-45")).toThrow(RangeError);
+  });
+});
+
+describe("formatTime", () => {
+  it("da solo la hora de Madrid en formato de 24 horas, con su horario de verano", () => {
+    expect(formatTime("2026-11-24T10:30:00Z")).toBe("11:30");
+    expect(formatTime("2026-07-01T16:05:00+00:00")).toBe("18:05");
+    expect(formatTime("2026-11-24T23:15:00Z")).toBe("00:15");
+  });
+
+  it("coincide con la hora de formatDateTime", () => {
+    const iso = "2026-03-29T00:59:00Z";
+    expect(formatDateTime(iso).endsWith(formatTime(iso))).toBe(true);
+  });
+
+  it("rechaza un texto que no es una fecha", () => {
+    expect(() => formatTime("")).toThrow(RangeError);
+    expect(() => formatTime("ayer")).toThrow(RangeError);
   });
 });
 

@@ -46,7 +46,7 @@ Encargo completo, autocontenido, en `docs/tareas/produccion-bloques-1-y-2.md`
 - [x] **T11 — Consultas que escalan.** Paginación, agregados del panel en SQL, índices.
 - [x] **T12 — Cabeceras de seguridad.** HSTS, CSP (primero report-only) y compañía.
 - [x] **T13 — Pedidos idempotentes.** Clave de idempotencia en `crear_pedido`.
-- [ ] **T14 — Movimientos de stock.** Tabla de auditoría alimentada por triggers.
+- [x] **T14 — Movimientos de stock.** Tabla de auditoría alimentada por triggers.
 - [ ] **T15 — Endurecer el acceso.** Ajustes de Auth que hace el humano, documentados.
 
 ## Decisiones del orquestador
@@ -147,6 +147,42 @@ Encargo completo, autocontenido, en `docs/tareas/produccion-bloques-1-y-2.md`
   o una falta de respuesta, para que reintentar sea seguro. Si la persona recarga la página tras
   perder la respuesta, el reenvío lleva otra clave y podría duplicar el pedido; se acepta como límite
   conocido (guardar la clave en el navegador queda como mejora futura).
+- **T14 (ronda 1) — diseño de `movimientos_stock`.** Todo lo registran triggers; `crear_pedido` y
+  `cancelar_pedido` no cambian. El motivo `ajuste` se distingue de los de pedido por `current_user`
+  (dentro de las funciones definer es su dueño), que no se puede cambiar desde la API. Decisiones
+  del orquestador sobre las dudas de Develop: (1) la migración registra un `ajuste` de saldo inicial
+  por cada producto existente, y el alta de un producto con stock registra otro, para que la suma de
+  deltas sea siempre el stock; (2) las claves ajenas a `productos` y `pedidos` son `on delete
+  cascade` (un producto con pedidos sigue sin poder borrarse por `pedido_lineas`, y los pedidos no
+  se borran desde la API); (3) `id` es `bigint` de identidad para fijar el orden dentro de una misma
+  transacción, aceptando que deja intuir el número total de movimientos; la app no lo muestra;
+  (4) en la fase 2 el seed alinea la fecha de los movimientos con la de sus pedidos. Los cambios en
+  `04_esquema_seguridad.sql` hacen que 04 falle hasta que se aplique la migración, como 07.
+- **T14 — migración aplicada.** Tras el APROBADO de la ronda 1 (solo base de datos), el orquestador
+  aplicó `20261124201320_movimientos_stock.sql` con `supabase db push` (saldo inicial: 10 `ajuste`
+  que suman 151, el stock total) y regeneró `database.types.ts`. Advisors: el aviso INFO
+  `unindexed_foreign_keys` de `movimientos_stock_pedido_fkey (pedido_id, owner_id)` vuelve a Develop:
+  en la fase 2 añade una migración nueva que solo cree ese índice. Los `unused_index` son los índices
+  nuevos, que la fase 2 empieza a usar. **Excepción a D8:** `movimientos_stock_registrar_ajuste` es
+  `security definer` sin comprobar `auth.uid()`, porque D7 impide escribir la tabla desde la API; es
+  una función de trigger que nadie de la API puede ejecutar y que escribe con `new.owner_id` (04#20,
+  #22, #26 y #27 lo comprueban). **Límite conocido:** un cambio de stock hecho como `postgres` fuera
+  de las funciones (editor de Supabase, SQL a mano) no deja movimiento; cualquier función `security
+  definer` nueva que cambie el stock tiene que registrar el suyo.
+- **T14 — fase 2 (rondas 2 y 3).** La r2 suspendió por D18: con un total múltiplo exacto del tamaño
+  de página, la página siguiente a la última daba 200 con 0 filas (PostgREST solo devuelve `PGRST103`
+  si el desplazamiento es mayor que el total) y la ficha mostraba «Aún no hay movimientos» y «Página
+  2 de 1». Decisión: `isPageOutOfRange` en `listing.ts` también para productos y clientes, que tenían
+  el mismo defecto con 50 filas. La r3 aprobó. Después, el orquestador aplicó
+  `20261124205448_indice_movimientos_stock_pedido.sql`: pgTAP 01–07 en verde contra el remoto (07
+  53/53), advisors de rendimiento sin avisos y de seguridad solo los conocidos (las tres funciones
+  `security definer` de pedidos y la protección de contraseñas filtradas, que es T15); los tipos no
+  cambian. **Quedan abiertas** (notas de r2/r3, no bloquean): en `/clientes` a 375 px, el
+  `sr-only` «Sin teléfono» (y quizá «Sin SKU» en productos y panel) ensancha el documento porque
+  ninguna celda es `relative`; el test 1 de `e2e/movimientos.spec.ts` recorre todas las páginas de
+  un producto cuyos movimientos solo crecen con cada ejecución (se reinicia al recargar el seed) y
+  no llega al caso del límite; el ancla `#movimientos` no salta en carga directa por el streaming; y
+  07#03 puede volver a `set_eq` ahora que el índice está aplicado.
 - **T9 — ejecución de pgTAP sin Docker.** `supabase test db --linked` también invoca un
   contenedor Docker (`pg_prove`) y falla en máquinas sin Docker en marcha. Decisión: habilitar
   `pgtap` en el esquema `extensions` mediante migración (`supabase migration new`), escribir los
