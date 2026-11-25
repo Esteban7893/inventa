@@ -62,6 +62,12 @@
     color: var(--color-ink);
     font-family: var(--font-sans);
     font-feature-settings: "kern";
+    /*
+     * Una palabra que no cabe en su línea (un nombre, un email o una búsqueda sin espacios) se
+     * parte en vez de ensanchar la página en móvil. `break-word` no cambia el ancho mínimo de
+     * nada: solo actúa cuando una palabra ya se saldría de su caja, y el resto queda igual.
+     */
+    overflow-wrap: break-word;
   }
 
   ::selection {
